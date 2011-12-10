@@ -1,0 +1,17 @@
+#Fri Dec 02 23:08:20 EET 2011
+eclipse.preferences.version=1
+environment/project/ai3.config.cuda.1370473984/LD_LIBRARY_PATH/delimiter=\:
+environment/project/ai3.config.cuda.1370473984/LD_LIBRARY_PATH/operation=append
+environment/project/ai3.config.cuda.1370473984/LD_LIBRARY_PATH/value=/usr/local/cuda/lib
+environment/project/ai3.config.cuda.1370473984/append=true
+environment/project/ai3.config.cuda.1370473984/appendContributed=true
+environment/project/cuda.toolchain.configuration.debug.1723567819/LD_LIBRARY_PATH/delimiter=\:
+environment/project/cuda.toolchain.configuration.debug.1723567819/LD_LIBRARY_PATH/operation=append
+environment/project/cuda.toolchain.configuration.debug.1723567819/LD_LIBRARY_PATH/value=/usr/local/cuda/lib
+environment/project/cuda.toolchain.configuration.debug.1723567819/append=true
+environment/project/cuda.toolchain.configuration.debug.1723567819/appendContributed=true
+environment/project/cuda.toolchain.configuration.release.483991517/LD_LIBRARY_PATH/delimiter=\:
+environment/project/cuda.toolchain.configuration.release.483991517/LD_LIBRARY_PATH/operation=append
+environment/project/cuda.toolchain.configuration.release.483991517/LD_LIBRARY_PATH/value=/usr/local/cuda/lib
+environment/project/cuda.toolchain.configuration.release.483991517/append=true
+environment/project/cuda.toolchain.configuration.release.483991517/appendContributed=true
