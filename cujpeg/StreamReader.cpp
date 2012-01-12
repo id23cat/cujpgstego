@@ -47,7 +47,9 @@ int StreamReader::CloseFile() {
 			throw 1;
 		return -1;
 	}
-	fclose(file);
+	if(file)
+		fclose(file);
+	file=NULL;
 	if(fileName)
 		free(fileName);
 	fileName = NULL;

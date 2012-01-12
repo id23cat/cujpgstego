@@ -5,6 +5,7 @@
  *      Author: id23cat
  */
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include "JPEGfile.h"
@@ -26,6 +27,35 @@ inline UINT16 h2l(UINT16 word) {
 	//	UINT16 lo = (word & 0x00FF)<<8;
 	//	UINT16 ret = lo|hi;
 	return (word & 0xFF00) >> 8 | (word & 0x00FF) << 8;
+}
+
+JPEG::~JPEG() {
+	if (comment.str)
+		free(comment.str);
+	for (int i = 0; i < 2; i++)
+		for (int j = 0; j < 2; j++)
+			if (hTable[i][j].code && hTable[i][j].mcodeslength) {
+				free(hTable[i][j].code);
+				hTable[i][j].mcodeslength = 0;
+			}
+	if (data.srcDataPtr)
+		free(data.srcDataPtr);
+}
+
+JPEG::JPEG(char *jfname) {
+	data.srcDataPtr = NULL;
+	jfile.OpenFile(jfname);
+	jfile.enable_exceptions = false;
+	comment.length = 0;
+	qTable[_Y_].length = 0;
+	qTable[_CBCR_].length = 0;
+	hTable[_Y_][_DC].length = 0;
+	hTable[_Y_][_AC].length = 0;
+	hTable[_CBCR_][_DC].length = 0;
+	hTable[_CBCR_][_AC].length = 0;
+
+	parseJpeg();
+	jfile.CloseFile();
 }
 
 UINT16 JPEG::readFlag() {
@@ -83,43 +113,51 @@ int JPEG::readDQT() {
 }
 
 int JPEG::readSOF0() {
-	properties.length = readFlag(); // read length
+	data.length = readFlag(); // read length
 
-	jfile.Read(&properties.precision, 1, 1);
+	jfile.Read(&data.precision, 1, 1);
 	UINT16 u16;
 	jfile.Read(&u16, 1, 2);
-	properties.imHeight = h2l(u16);
+	data.imHeight = h2l(u16);
 	jfile.Read(&u16, 1, 2);
-	properties.imWidth = h2l(u16);
-	jfile.Read(&properties.componentsCount, 1, 1);
+	data.imWidth = h2l(u16);
+	jfile.Read(&data.componentsCount, 1, 1);
 	// Components
 	UINT8 u8;
-	for (int i = 0; i < properties.componentsCount; i++) {
+	for (int i = 0; i < data.componentsCount; i++) {
 		jfile.Read(&u8, 1, 1);
-		switch (u8) {
-		case _Y:
-			properties.Y.cID = u8;
-			jfile.Read(&u8, 1, 1);
-			properties.Y.horizontalDecimation = HIGH(u8);
-			properties.Y.verticalDecimation = LOW(u8);
-			jfile.Read(&properties.Y.qtID, 1, 1);
-			break;
 
-		case _CB:
-			properties.Cb.cID = u8;
-			jfile.Read(&u8, 1, 1);
-			properties.Cb.horizontalDecimation = HIGH(u8);
-			properties.Cb.verticalDecimation = LOW(u8);
-			jfile.Read(&properties.Cb.qtID, 1, 1);
-			break;
-		case _CR:
-			properties.Cr.cID = u8;
-			jfile.Read(&u8, 1, 1);
-			properties.Cr.horizontalDecimation = HIGH(u8);
-			properties.Cr.verticalDecimation = LOW(u8);
-			jfile.Read(&properties.Cr.qtID, 1, 1);
-			break;
-		}
+		data.component[i].cID = u8;
+		jfile.Read(&u8, 1, 1);
+		data.component[i].horizontalDecimation = HIGH(u8);
+		data.component[i].verticalDecimation = LOW(u8);
+		jfile.Read(&data.component[i].qtID, 1, 1);
+		//		data.component[i].
+
+		//		switch (u8) {
+		//		case _Y:
+		//			data.Y.cID = u8;
+		//			jfile.Read(&u8, 1, 1);
+		//			data.Y.horizontalDecimation = HIGH(u8);
+		//			data.Y.verticalDecimation = LOW(u8);
+		//			jfile.Read(&data.Y.qtID, 1, 1);
+		//			break;
+		//
+		//		case _CB:
+		//			data.Cb.cID = u8;
+		//			jfile.Read(&u8, 1, 1);
+		//			data.Cb.horizontalDecimation = HIGH(u8);
+		//			data.Cb.verticalDecimation = LOW(u8);
+		//			jfile.Read(&properties.Cb.qtID, 1, 1);
+		//			break;
+		//		case _CR:
+		//			properties.Cr.cID = u8;
+		//			jfile.Read(&u8, 1, 1);
+		//			properties.Cr.horizontalDecimation = HIGH(u8);
+		//			properties.Cr.verticalDecimation = LOW(u8);
+		//			jfile.Read(&properties.Cr.qtID, 1, 1);
+		//			break;
+		//		}
 	}
 	return 0;
 }
@@ -161,39 +199,33 @@ void DHT::CalcTree() {
 }
 
 int JPEG::readSOS() {
-	scan.headlen = readFlag(); // read length
-	jfile.Read(&scan.compCount, 1, 1);
+	data.length = readFlag(); // read length
+	jfile.Read(&data.componentsCount, 1, 1);
 	UINT8 ID;
 	UINT8 u8;
-	for (int i = 0; i < scan.compCount; i++) {
+	for (int i = 0; i < data.componentsCount; i++) {
 		jfile.Read(&ID, 1, 1);
-		scan.component[base0(ID)].colID = ID;
+		data.component[base0(ID)].cID = ID;
 		jfile.Read(&u8, 1, 1);
-		scan.component[base0(ID)].hufDCID = HIGH(u8);
-		scan.component[base0(ID)].hufDC = &(hTable[HIGH(u8)][_DC]);
-		scan.component[base0(ID)].hufACID = LOW(u8);
-		scan.component[base0(ID)].hufAC = &(hTable[LOW(u8)][_AC]);
+		data.component[base0(ID)].hufDCID = HIGH(u8);
+		data.component[base0(ID)].hufDC = &(hTable[HIGH(u8)][_DC]);
+		data.component[base0(ID)].hufACID = LOW(u8);
+		data.component[base0(ID)].hufAC = &(hTable[LOW(u8)][_AC]);
 	}
 
 	UINT8 t[3];
 	jfile.Read(t, 1, 3);
-	dataLength = jfile.FileRest() - 2;
-	data = (UINT8*) malloc(dataLength);
-	jfile.Read(data, 1, dataLength);
+	data.dataLength = jfile.FileRest() - 2;
+	data.srcDataPtr = (UINT8*) malloc(data.dataLength);
+	jfile.Read(data.srcDataPtr, 1, data.dataLength);
+	for(size_t i=0; i<data.dataLength-1; i++){
+		if(data.srcDataPtr[i]==0xFF && data.srcDataPtr[i+1]==0x00){
+			printf("FIND FF00 in data!\n");
+			memmove(data.srcDataPtr+i+1, data.srcDataPtr+i+2, data.dataLength-i+2);
+			data.dataLength--;
+		}
+	}
 	return 0;
-}
-
-JPEG::~JPEG() {
-	if (comment.str)
-		free(comment.str);
-	for (int i = 0; i < 2; i++)
-		for (int j = 0; j < 2; j++)
-			if (hTable[i][j].code && hTable[i][j].mcodeslength) {
-				free(hTable[i][j].code);
-				hTable[i][j].mcodeslength = 0;
-			}
-	if (data)
-		free(data);
 }
 
 int JPEG::parseJpeg() {
@@ -226,7 +258,7 @@ int JPEG::parseJpeg() {
 			printf("FFC0\n");
 			readSOF0();
 #ifdef PRINT_DATA
-			properties.PrintData();
+			data.PrintData();
 #endif
 			break;
 		case 0xFFC4: // DHT
@@ -249,10 +281,10 @@ int JPEG::parseJpeg() {
 			printf("FFDA\n");
 			readSOS();
 #ifdef PRINT_DATA
-			scan.PrintData();
-			printf("Length of data: %d\nDATA: ", (int) dataLength);
-			for (int i = 0; i < dataLength; i++) {
-				printf("%x ", data[i]);
+			data.PrintData();
+			printf("\nLength of data: %d\nDATA: ", (int) data.dataLength);
+			for (size_t i = 0; i < data.dataLength; i++) {
+				printf("%x ", data.srcDataPtr[i]);
 			}
 			printf("\n");
 #endif
@@ -269,24 +301,9 @@ int JPEG::parseJpeg() {
 	return -1;
 }
 
-JPEG::JPEG(char *jfname) {
-	jfile.OpenFile(jfname);
-	jfile.enable_exceptions = false;
-	comment.length = 0;
-	qTable[_Y_].length = 0;
-	qTable[_CBCR_].length = 0;
-	hTable[_Y_][_DC].length = 0;
-	hTable[_Y_][_AC].length = 0;
-	hTable[_CBCR_][_DC].length = 0;
-	hTable[_CBCR_][_AC].length = 0;
-
-	parseJpeg();
-	jfile.CloseFile();
-}
-
 void JPEG::GetDCTs() {
 	try {
-		BITSETiterator bit(data, dataLength);
+		BITSETiterator bit(data.srcDataPtr, data.dataLength);
 		int dctidx;
 		UINT8 c0, c1;//, clen;
 		for (int i = _Y_; i <= _CBCR_; i++) {
@@ -323,13 +340,13 @@ void JPEG::GetDCTs() {
 			while (dctidx < 64) {
 
 				hTable[i][_AC].tree.ResetCurrentPointer();
-//				UINT8 b;
-//				bool l;
-//				do{
-//					b = bit.GetBit();
-//					l = hTable[i][_AC].tree.MovePtr(b);
-//					bit.NextBit();
-//				}while (!l);
+				//				UINT8 b;
+				//				bool l;
+				//				do{
+				//					b = bit.GetBit();
+				//					l = hTable[i][_AC].tree.MovePtr(b);
+				//					bit.NextBit();
+				//				}while (!l);
 				while (!hTable[i][_AC].tree.MovePtr(bit.GetBit()))
 					// here must be FF00 or FF... flag checking
 					bit.NextBit();
@@ -341,7 +358,7 @@ void JPEG::GetDCTs() {
 				}
 
 				UINT8 zerocount = c0 >> 4;
-				while (dctidx < 64 && zerocount){
+				while (dctidx < 64 && zerocount) {
 					DCTs[dctidx++] = 0;
 					zerocount--;
 				}
@@ -360,17 +377,24 @@ void JPEG::GetDCTs() {
 						DCTs[dctidx++] = c1;
 					else {
 						short q1 = c0 & 0x0F;
-						short q2 = 2<<(q1-1);
-						short q3 = c1- q2 +1;
+						short q2 = 2 << (q1 - 1);
+						short q3 = c1 - q2 + 1;
 						DCTs[dctidx++] = q3;
-//						DCTs[dctidx++] = c1 - (2 << ((c0 & 0x0F) - 1)) + 1;
+						//						DCTs[dctidx++] = c1 - (2 << ((c0 & 0x0F) - 1)) + 1;
 					}
 				}
 				bit.NextBit();
 			}
+			for (int i = 0; i < 8; i++) {
+				for (int j = 0; j < 8; j++) {
+					printf("%d ", DCTs[ZigZag[i][j]]);
+				}
+				printf("\n");
+			}
+			printf("\n");
 		}
 	} catch (int) {
-			fprintf(stderr, "Exception cached!\n");
+		fprintf(stderr, "Exception cached!\n");
 	}
 
 }

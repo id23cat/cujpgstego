@@ -72,40 +72,6 @@ struct DQT { // Quantization table
 	};
 };
 
-struct COLCOMPONENT { // color component
-	UINT8 cID; // component ID
-	UINT8 horizontalDecimation;
-	UINT8 verticalDecimation;
-	UINT8 qtID; // Quantization table ID in DQT: _Y, _CB, _CR
-	void PrintData(){
-		printf("ColorComponent ID=%d: hPrecision=%d, vPrecision=%d, qtID=%d\n", cID, horizontalDecimation,
-				verticalDecimation, qtID);
-	}
-};
-
-struct SOF0 { // Baseline DCT
-	UINT16 length;
-	UINT8 precision; // more often =3
-	UINT16 imHeight;
-	UINT16 imWidth;
-	UINT8 componentsCount;
-	struct COLCOMPONENT Y;
-	struct COLCOMPONENT Cb;
-	struct COLCOMPONENT Cr;
-	void PrintData(){
-		if(length){
-			printf("SOF0 (%d bytes): precision=%d, height=%d, width=%d, compCount=%d\n",
-					length,
-					precision,
-					imHeight, imWidth,
-					componentsCount);
-			Y.PrintData();;
-			Cb.PrintData();
-			Cr.PrintData();
-		}
-	}
-};
-
 #define _DC 0
 #define _AC 1
 
@@ -136,45 +102,105 @@ struct DHT { // Huffman table
 		}
 	}
 };
-typedef DCTblock UINT16[64];
 
-struct COMPONENT {
-	UINT8 colID; // _Y, _CB, _CR
-	UINT8 hufDCID;
-//	UINT8 *hufDC;
-	struct DHT *hufDC;
-	UINT8 hufACID;
-//	UINT8 *hufAC;
-	struct DHT *hufAC;
+//typedef UINT16[64] DCTblock;
+
+struct COLCOMPONENT { // color component
+	UINT8 cID; // component ID
+	UINT8 horizontalDecimation;
+	UINT8 verticalDecimation;
+	UINT8 qtID; // Quantization table ID in DQT: _Y, _CB, _CR
+
+	// from SOS
+	UINT8 hufDCID;		// index of Huffman config for DC coefficient
+	struct DHT *hufDC;		// pointer to DC-Huffman-tree struct
+	UINT8 hufACID;		// index of Huffman config for AC coefficient
+	struct DHT *hufAC;		// pointer to AC-Huffman-tree struct
+
 //	DCTblock **blockM;
 //	DCTblock *blockV;
-
 	void PrintData(){
-		printf("\tCOMPONENT: colID=%d, hufDCID=%d, hufACID=%d\n", colID, hufDCID, hufACID);
-		printf("\t\tHUFtableDC: ");
-		hufDC->PrintData();
-		printf("\t\tHUFtableAC: ");
-		hufAC->PrintData();
+		printf("ColorComponent ID=%d: hPrecision=%d, vPrecision=%d, qtID=%d\n", cID, horizontalDecimation,
+				verticalDecimation, qtID);
+		printf("\tCOMPONENT: cID=%d, hufDCID=%d, hufACID=%d\n", cID, hufDCID, hufACID);
+				printf("\t\tHUFtableDC: ");
+//				hufDC->PrintData();
+				printf("\t\tHUFtableAC: ");
+//				hufAC->PrintData();
 	}
 };
 
-struct SOS {
-	UINT16 headlen;
-	UINT8 compCount; // more often =3
-//	struct COMPONENT Y;
-//	struct COMPONENT Cb;
-//	struct COMPONENT Cr;
-	struct COMPONENT component[3];
+struct SOF0 { // Baseline DCT
+	UINT16 length;
+	UINT8 precision; // more often =3
+	UINT16 imHeight;
+	UINT16 imWidth;
+	UINT8 componentsCount;
+	UINT8 *srcDataPtr;
+	size_t dataLength;
+//	UINT8 compCount;
+//	struct COLCOMPONENT Y;
+//	struct COLCOMPONENT Cb;
+//	struct COLCOMPONENT Cr;
+	struct COLCOMPONENT component[3];
 	void PrintData(){
-		printf("SOS (headlen=%d bytes): compCount=%d\n", headlen, compCount);
-		component[0].PrintData();
-		component[1].PrintData();
-		component[2].PrintData();
-//		Y.PrintData();
-//		Cb.PrintData();
-//		Cr.PrintData();
+		if(length){
+			printf("SOF0 (%d bytes): precision=%d, height=%d, width=%d, componentsCount=%d\n",
+					length,
+					precision,
+					imHeight, imWidth,
+					componentsCount);
+//			Y.PrintData();
+//			Cb.PrintData();
+//			Cr.PrintData();
+			component[0].PrintData();
+			component[1].PrintData();
+			component[2].PrintData();
+		}
 	}
 };
+
+
+
+
+
+//struct COMPONENT {
+//	UINT8 colID; // _Y, _CB, _CR
+//	UINT8 hufDCID;
+////	UINT8 *hufDC;
+//	struct DHT *hufDC;
+//	UINT8 hufACID;
+////	UINT8 *hufAC;
+//	struct DHT *hufAC;
+////	DCTblock **blockM;
+////	DCTblock *blockV;
+//
+//	void PrintData(){
+//		printf("\tCOMPONENT: colID=%d, hufDCID=%d, hufACID=%d\n", colID, hufDCID, hufACID);
+//		printf("\t\tHUFtableDC: ");
+//		hufDC->PrintData();
+//		printf("\t\tHUFtableAC: ");
+//		hufAC->PrintData();
+//	}
+//};
+//
+//struct SOS {
+//	UINT16 headlen;
+//	UINT8 compCount; // more often =3
+////	struct COMPONENT Y;
+////	struct COMPONENT Cb;
+////	struct COMPONENT Cr;
+//	struct COMPONENT component[3];
+//	void PrintData(){
+//		printf("SOS (headlen=%d bytes): compCount=%d\n", headlen, compCount);
+//		component[0].PrintData();
+//		component[1].PrintData();
+//		component[2].PrintData();
+////		Y.PrintData();
+////		Cb.PrintData();
+////		Cr.PrintData();
+//	}
+//};
 
 //struct Compare{
 //	bool operator()(const UINT8 u1, const UINT8 u2){
@@ -211,12 +237,12 @@ class JPEG {
 //	struct DQT qTableY;
 //	struct DQT qTableCbCr;
 	struct DQT qTable[2];
-	struct SOF0 properties;
+	struct SOF0 data;
 	struct DHT hTable[2][2];	// [tableID][DC/AC]
 //	map<UINT8, struct DHT, Compare> mm;
-	struct SOS scan;
-	long dataLength;
-	UINT8 *data;
+//	struct SOS scan;
+//	long dataLength;
+//	UINT8 *dataPtr;
 	short DCTs[64];
 
 	StreamReader jfile;

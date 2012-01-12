@@ -19,5 +19,6 @@ int main(int argc, char **argv)
 //	fclose(f);
 	JPEG jpeg(FNAME);
 	jpeg.GetDCTs();
+	printf("All is OK\n");
 
 }
