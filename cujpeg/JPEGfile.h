@@ -17,9 +17,15 @@ using namespace std;
 #define LOW(byte) (byte & 0x0F)
 #define HIGH(byte) (byte >> 4)
 
+
 typedef unsigned char UINT8;
+typedef signed char INT8;
 typedef unsigned short UINT16;
+typedef signed short INT16;
 typedef unsigned int UINT32;
+
+#define BLK_LENGTH 64
+#define BLK_LENGTH_BYTE 64*sizeof(INT16)
 
 static const int ZigZag[8][8] = {
 		{ 0,  1,  5,  6, 14, 15, 27, 28 },
@@ -99,6 +105,7 @@ struct DHT { // Huffman table
 			for(int i=0;i<mcodeslength;i++)
 				printf("%x ", code[i]);
 			printf("\n");
+			tree.PrintData();
 		}
 	}
 };
@@ -127,22 +134,25 @@ struct COLCOMPONENT { // color component
 //				hufDC->PrintData();
 				printf("\t\tHUFtableAC: ");
 //				hufAC->PrintData();
+				printf("\n");
 	}
 };
 
 struct SOF0 { // Baseline DCT
 	UINT16 length;
 	UINT8 precision; // more often =3
-	UINT16 imHeight;
-	UINT16 imWidth;
+	UINT16 imHeight;	// in pixels
+	UINT16 imWidth;		// *********
 	UINT8 componentsCount;
 	UINT8 *srcDataPtr;
-	size_t dataLength;
+	size_t srcDataLength;
 //	UINT8 compCount;
 //	struct COLCOMPONENT Y;
 //	struct COLCOMPONENT Cb;
 //	struct COLCOMPONENT Cr;
 	struct COLCOMPONENT component[3];
+	UINT8 maxVDecimation;
+	UINT8 maxHDecimation;
 	void PrintData(){
 		if(length){
 			printf("SOF0 (%d bytes): precision=%d, height=%d, width=%d, componentsCount=%d\n",
@@ -159,10 +169,6 @@ struct SOF0 { // Baseline DCT
 		}
 	}
 };
-
-
-
-
 
 //struct COMPONENT {
 //	UINT8 colID; // _Y, _CB, _CR
@@ -227,7 +233,8 @@ public:
 		}else throw 1;
 		return *this;
 	};
-	UINT8 GetBit(){ return data[byteIdx]>>(7-bitIdx)&1;};
+	UINT8 GetBit(){ /*printf(" %d ", data[byteIdx]>>(7-bitIdx)&1);*/ return data[byteIdx]>>(7-bitIdx)&1;};
+	void PrintData(){printf("\n");for(int i=byteIdx; i<dataLength; i++) printf(" %x", (int)data[i]);	printf("\n");};
 };
 
 class JPEG {
@@ -241,9 +248,12 @@ class JPEG {
 	struct DHT hTable[2][2];	// [tableID][DC/AC]
 //	map<UINT8, struct DHT, Compare> mm;
 //	struct SOS scan;
-//	long dataLength;
+
 //	UINT8 *dataPtr;
-	short DCTs[64];
+
+//	INT16 DCTs[64];
+	INT16 *DCTdata;
+	long DCTdataLength;
 
 	StreamReader jfile;
 private:

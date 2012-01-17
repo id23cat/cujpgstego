@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "JPEGfile.h"
 #define FNAME "g.jpg"
+//#define FNAME "005.jpg"
 
 int main(int argc, char **argv)
 {

@@ -6,6 +6,7 @@
  */
 
 #include <memory.h>
+
 #include "huftree.h"
 
 void TREE::treeFree(treeNODE *p) {
@@ -21,18 +22,21 @@ void TREE::treeFree(treeNODE *p) {
 void TREE::addList(treeNODE *p, treeLIST l) {
 	if (!p->left) { // if left node does not exist
 		p->left = (treeNODE*) malloc(sizeof(treeNODE)); //create left node
-//		memset(p->left, 0, sizeof(treeNODE));
+		//		memset(p->left, 0, sizeof(treeNODE));
 		p->left->prev = p;
 		//		p->left->data = l;
 		curptr = p->left;
+		curptr->left = NULL;
+		curptr->right = NULL;
+		curptr->data.codelength = 0;
 		curptr->depth = p->depth + 1; // incrementing depth
 
 		if (curptr->depth) {
-			curptr->data.bitval =0;
+			curptr->data.bitval = 0;
 			UINT16 v = p->data.bitval;
 			v = v << 1;
 			curptr->data.bitval = v;
-//			printf("0x%x\n", curptr->data.bitval);
+			//			printf("0x%x\n", curptr->data.bitval);
 
 		}
 
@@ -45,19 +49,22 @@ void TREE::addList(treeNODE *p, treeLIST l) {
 			addList(curptr, l);
 	} else if (!p->right) {
 		p->right = (treeNODE*) malloc(sizeof(treeNODE)); //create right node
-//		memset(p->left, 0, sizeof(treeNODE));
+		//		memset(p->left, 0, sizeof(treeNODE));
 		p->right->prev = p;
 		//		p->right->data = l;
 		curptr = p->right;
+		curptr->left = NULL;
+		curptr->right = NULL;
+		curptr->data.codelength = 0;
 		curptr->depth = p->depth + 1; // incrementing depth
 
 
 		if (curptr->depth) {
-			curptr->data.bitval=0;
+			curptr->data.bitval = 0;
 			UINT16 v = p->data.bitval;
-			v = (v << 1)|1;
+			v = (v << 1) | 1;
 			curptr->data.bitval = v;
-//			printf("0x%x\n", curptr->data.bitval);
+			//			printf("0x%x\n", curptr->data.bitval);
 		}
 
 		if (curptr->depth == l.codelength) {
@@ -97,16 +104,24 @@ TREE::~TREE() {
 	curptr = NULL;
 }
 
-bool TREE::MovePtr(bool branch){
-	if(branch)
-		curptr = curptr->right;
-	else
+bool TREE::MovePtr(bool branch) throw(int){
+//	printf("branch_%d ", (int)branch); fflush(stdout);
+	if (branch)
+		if (curptr->right)
+			curptr = curptr->right;
+		else
+			throw 1;
+	else if (curptr->left)
 		curptr = curptr->left;
-	if(curptr->data.codelength)
+	else
+		throw 1;
+
+//	curptr->PrintData();
+	if (curptr->data.codelength)
 		return true;
 	return false;
 }
 
-UINT8 TREE::GetCode(){
+UINT8 TREE::GetCode() {
 	return curptr->data.code;
 }

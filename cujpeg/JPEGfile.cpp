@@ -9,8 +9,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include "JPEGfile.h"
+#include "DCTdataIterator.h"
 
-#define PRINT_DATA 1
+//#define PRINT_DATA 1
 //#define PRINT_TREE 1
 
 #define base0(ID) (ID-1)
@@ -40,6 +41,8 @@ JPEG::~JPEG() {
 			}
 	if (data.srcDataPtr)
 		free(data.srcDataPtr);
+	if (DCTdata)
+		free(DCTdata);
 }
 
 JPEG::JPEG(char *jfname) {
@@ -53,6 +56,7 @@ JPEG::JPEG(char *jfname) {
 	hTable[_Y_][_AC].length = 0;
 	hTable[_CBCR_][_DC].length = 0;
 	hTable[_CBCR_][_AC].length = 0;
+	DCTdata = NULL;
 
 	parseJpeg();
 	jfile.CloseFile();
@@ -124,13 +128,18 @@ int JPEG::readSOF0() {
 	jfile.Read(&data.componentsCount, 1, 1);
 	// Components
 	UINT8 u8;
+	data.maxHDecimation = data.maxVDecimation = 0;
 	for (int i = 0; i < data.componentsCount; i++) {
 		jfile.Read(&u8, 1, 1);
 
 		data.component[i].cID = u8;
 		jfile.Read(&u8, 1, 1);
 		data.component[i].horizontalDecimation = HIGH(u8);
+		if (data.maxHDecimation < data.component[i].horizontalDecimation)
+			data.maxHDecimation = data.component[i].horizontalDecimation;
 		data.component[i].verticalDecimation = LOW(u8);
+		if (data.maxVDecimation < data.component[i].verticalDecimation)
+			data.maxVDecimation = data.component[i].verticalDecimation;
 		jfile.Read(&data.component[i].qtID, 1, 1);
 		//		data.component[i].
 
@@ -215,14 +224,15 @@ int JPEG::readSOS() {
 
 	UINT8 t[3];
 	jfile.Read(t, 1, 3);
-	data.dataLength = jfile.FileRest() - 2;
-	data.srcDataPtr = (UINT8*) malloc(data.dataLength);
-	jfile.Read(data.srcDataPtr, 1, data.dataLength);
-	for(size_t i=0; i<data.dataLength-1; i++){
-		if(data.srcDataPtr[i]==0xFF && data.srcDataPtr[i+1]==0x00){
+	data.srcDataLength = jfile.FileRest() - 2;
+	data.srcDataPtr = (UINT8*) malloc(data.srcDataLength);
+	jfile.Read(data.srcDataPtr, 1, data.srcDataLength);
+	for (size_t i = 0; i < data.srcDataLength - 1; i++) {
+		if (data.srcDataPtr[i] == 0xFF && data.srcDataPtr[i + 1] == 0x00) {
 			printf("FIND FF00 in data!\n");
-			memmove(data.srcDataPtr+i+1, data.srcDataPtr+i+2, data.dataLength-i+2);
-			data.dataLength--;
+			memmove(data.srcDataPtr + i + 1, data.srcDataPtr + i + 2,
+					data.srcDataLength - i + 2);
+			data.srcDataLength--;
 		}
 	}
 	return 0;
@@ -282,8 +292,8 @@ int JPEG::parseJpeg() {
 			readSOS();
 #ifdef PRINT_DATA
 			data.PrintData();
-			printf("\nLength of data: %d\nDATA: ", (int) data.dataLength);
-			for (size_t i = 0; i < data.dataLength; i++) {
+			printf("\nLength of data: %d\nDATA: ", (int) data.srcDataLength);
+			for (size_t i = 0; i < data.srcDataLength; i++) {
 				printf("%x ", data.srcDataPtr[i]);
 			}
 			printf("\n");
@@ -303,22 +313,37 @@ int JPEG::parseJpeg() {
 
 void JPEG::GetDCTs() {
 	try {
-		BITSETiterator bit(data.srcDataPtr, data.dataLength);
-		int dctidx;
+		BITSETiterator bit(data.srcDataPtr, data.srcDataLength);
+		DCTdataLength = 0;
+		for (int i = 0; i < data.componentsCount; i++)
+			DCTdataLength += data.imWidth * ((float)data.component[i].horizontalDecimation / (float)data.maxHDecimation) *
+			data.imHeight * ((float)data.component[i].verticalDecimation / (float)data.maxVDecimation);
+		DCTdataLength *= sizeof(INT16)*2;
+		printf("!! Alloc %d bytes", DCTdataLength);
+		//		DCTdataLength = data.imWidth * data.imHeight * data.componentsCount * sizeof(INT16);
+		DCTdata = (INT16*) malloc(DCTdataLength);
+		DCTdataIterator DCTs(DCTdata, DCTdataLength, data);
+
+		int dctIdx;
 		UINT8 c0, c1;//, clen;
-		for (int i = _Y_; i <= _CBCR_; i++) {
-			dctidx = 0;
+		//for (int i = _Y_; i <= _CBCR_; i++) {
+		while (1) {
+			dctIdx = 0;
 			//for(int j=_DC; j<=_AC; j++){
+			int i = (DCTs.color() > 0);
+
 			// calculating of DC coefficient
 			{
 				hTable[i][_DC].tree.ResetCurrentPointer();
 				while (!hTable[i][_DC].tree.MovePtr(bit.GetBit()))
-					// here must be FF00 or FF... flag checking
 					bit.NextBit();
+//				printf("\n");
 				UINT8 clen = c0 = hTable[i][_DC].tree.GetCode();
-				if (!c0)
-					DCTs[dctidx++] = c0;
-				else {
+				printf("c0=%d\n", c0);
+				if (!c0) {
+					bit.NextBit();
+					DCTs[dctIdx++] = (INT8) c0 + DCTs.getPrevDC();
+				} else {
 					c1 = bit.NextBit().GetBit();
 					bool nativeValue = (bool) c1;
 					c0--;
@@ -327,18 +352,25 @@ void JPEG::GetDCTs() {
 						c1 = (c1 << 1) | bit.NextBit().GetBit();
 						c0--;
 					}
+//					printf("\n");
+					printf("c1=%d\n", c1);
+
 					bit.NextBit();
 					if (nativeValue)
-						DCTs[dctidx++] = c1;
+						DCTs[dctIdx++] = c1 + DCTs.getPrevDC();
 					else {
-						DCTs[dctidx++] = c1 - (2 << (clen - 1)) + 1;
+						//						INT16 t = c1 - (1 << clen) + 1 + DCTs.getPrevDC();
+						//						DCTs[dctIdx++] = t;
+						DCTs[dctIdx++] = c1 - (2 << (clen - 1)) + 1
+								+ DCTs.getPrevDC();
 					}
 				}
 			}
+
 			// calculating of AC coefficients
 
-			while (dctidx < 64) {
-
+			while (dctIdx < 64) {
+//				bit.PrintData();
 				hTable[i][_AC].tree.ResetCurrentPointer();
 				//				UINT8 b;
 				//				bool l;
@@ -348,18 +380,18 @@ void JPEG::GetDCTs() {
 				//					bit.NextBit();
 				//				}while (!l);
 				while (!hTable[i][_AC].tree.MovePtr(bit.GetBit()))
-					// here must be FF00 or FF... flag checking
 					bit.NextBit();
 				c0 = hTable[i][_AC].tree.GetCode();
 				if (!c0) {
-					while (dctidx < 64)
-						DCTs[dctidx++] = 0;
+					while (dctIdx < 64)
+						DCTs[dctIdx++] = 0;
 					continue;
 				}
 
 				UINT8 zerocount = c0 >> 4;
-				while (dctidx < 64 && zerocount) {
-					DCTs[dctidx++] = 0;
+				while (dctIdx < 64 && zerocount) {
+					DCTs[dctIdx++] = 0;
+					//					printf(" %d ", DCTs[dctIdx-1]);
 					zerocount--;
 				}
 
@@ -373,18 +405,21 @@ void JPEG::GetDCTs() {
 						c1 = (c1 << 1) | bit.NextBit().GetBit();
 						clen--;
 					}
+
 					if (nativeValue)
-						DCTs[dctidx++] = c1;
+						DCTs[dctIdx++] = c1;
 					else {
-						short q1 = c0 & 0x0F;
-						short q2 = 2 << (q1 - 1);
-						short q3 = c1 - q2 + 1;
-						DCTs[dctidx++] = q3;
-						//						DCTs[dctidx++] = c1 - (2 << ((c0 & 0x0F) - 1)) + 1;
+						//						INT16 q1 = c0 & 0x0F;
+						//						INT16 q2 = 2 << (q1 - 1);
+						//						INT16 q3 = c1 - q2 + 1;
+						//						DCTs[dctIdx++] = q3;
+						DCTs[dctIdx++] = c1 - (2 << ((c0 & 0x0F) - 1)) + 1;
 					}
 				}
 				bit.NextBit();
 			}
+			bit.NextBit();
+			printf("\n");
 			for (int i = 0; i < 8; i++) {
 				for (int j = 0; j < 8; j++) {
 					printf("%d ", DCTs[ZigZag[i][j]]);
@@ -392,8 +427,19 @@ void JPEG::GetDCTs() {
 				printf("\n");
 			}
 			printf("\n");
+			if(!DCTs.lastBlock()) DCTs.mvToNextBlock();
+			else{
+				for(int i=0; i<DCTdataLength/2; i++){
+					printf("%d ", DCTs[i]);
+					if(!i%8)printf("\n");
+					if(!i%64)printf("\n");
+				}
+				return;
+			}
 		}
 	} catch (int) {
+		fprintf(stderr, "Exception cached!\n");
+	} catch (...) {
 		fprintf(stderr, "Exception cached!\n");
 	}
 

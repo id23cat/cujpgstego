@@ -58,7 +58,7 @@ public:
 		curptr = tree;
 	}
 
-	bool MovePtr(bool branch);		// return true if curptr points to the list
+	bool MovePtr(bool branch) throw(int);		// return true if curptr points to the list
 	UINT8 GetCode();				// return code from node that currently pionted by curptr
 };
 

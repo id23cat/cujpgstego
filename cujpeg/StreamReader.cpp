@@ -7,6 +7,8 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <boost/exception/all.hpp>
+#include <stdexcept>
 #include "StreamReader.h"
 
 //////// private ////////////
@@ -37,7 +39,8 @@ int StreamReader::OpenFile(char *fname) {
 	}
 	fileName = (char*) malloc(strlen(fname)+1);
 	strcpy(fileName, fname);
-	fileLength();
+
+	return fileLength();;
 }
 
 int StreamReader::CloseFile() {
@@ -53,6 +56,8 @@ int StreamReader::CloseFile() {
 	if(fileName)
 		free(fileName);
 	fileName = NULL;
+
+	return 0;
 }
 
 long StreamReader::FileRest() {
