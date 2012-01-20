@@ -12,6 +12,7 @@
 #include "DCTdataIterator.h"
 
 //#define PRINT_DATA 1
+//#define PRINT_DCT_DECODE_PROCESS
 //#define PRINT_TREE 1
 
 #define base0(ID) (ID-1)
@@ -50,6 +51,7 @@ JPEG::JPEG(char *jfname) {
 	jfile.OpenFile(jfname);
 	jfile.enable_exceptions = false;
 	comment.length = 0;
+	comment.str = NULL;
 	qTable[_Y_].length = 0;
 	qTable[_CBCR_].length = 0;
 	hTable[_Y_][_DC].length = 0;
@@ -68,6 +70,27 @@ UINT16 JPEG::readFlag() {
 	//t = (c[0] << 8) | c[1];
 	t = h2l(t);
 	return t;
+}
+
+int JPEG::readJFIF(){
+	size_t length = readFlag();
+//	UINT8 *t = (UINT8*)malloc(length-2);
+//	jfile.Read(t, 1, length-2);
+//#ifdef PRINT_DATA
+//	for(int i=0; i<length-2; i++)	printf("%x ", t[i]);
+//	printf("\n");
+//#endif
+////	jfile.Read(&jfif.id, 1, 5);
+////	jfile.Read(&jfif.version, 2, 1);
+////	jfile.Read(&jfif.units, 1, 1);
+////	jfile.Read(&jfif.xDensity, 2, 1);
+////	jfile.Read(&jfif.yDensity, 2, 1);
+////	jfile.Read(&jfif.xThumbnail, 1, 1);
+////	jfile.Read(&jfif.yThumbnail, 1, 1);
+////	jfile.Read(jfif.n, 3, 1);
+//	free(t);
+	jfile.mvForward(length - 2);
+	return 0;
 }
 
 int JPEG::readComment() {
@@ -229,7 +252,9 @@ int JPEG::readSOS() {
 	jfile.Read(data.srcDataPtr, 1, data.srcDataLength);
 	for (size_t i = 0; i < data.srcDataLength - 1; i++) {
 		if (data.srcDataPtr[i] == 0xFF && data.srcDataPtr[i + 1] == 0x00) {
+#ifdef PRINT_DATA
 			printf("FIND FF00 in data!\n");
+#endif
 			memmove(data.srcDataPtr + i + 1, data.srcDataPtr + i + 2,
 					data.srcDataLength - i + 2);
 			data.srcDataLength--;
@@ -246,6 +271,26 @@ int JPEG::parseJpeg() {
 		switch (flag) {
 		case 0xFFD8: //	begin
 			printf("FFD8\n");
+			break;
+		case 0xFFE0: //	JFIF
+		case 0xFFE1: //	EXIF
+		case 0xFFE2: //	ICC
+		case 0xFFE3: //	JPS
+		case 0xFFE4: //
+		case 0xFFE5: //
+		case 0xFFE6: //	NITF
+		case 0xFFE7: //
+		case 0xFFE8: //
+		case 0xFFE9: //
+		case 0xFFEA: //	ActiveObject
+		case 0xFFEB: //	HELIOS JPEG Resources
+		case 0xFFEC: //	Picture Info
+		case 0xFFED: //	Photoshop
+		case 0xFFEE: //
+		case 0xFFEF: //
+			printf("FFEx\n");
+			readJFIF();
+//			jfif.PrintData();
 			break;
 		case 0xFFFE: // comment
 			printf("FFFE\n");
@@ -303,12 +348,16 @@ int JPEG::parseJpeg() {
 			printf("FFD9\n");
 			return 0;
 		default:
+//			fprintf(stderr, "ooo!: Unknown JPEG flag: 0x%X\n", flag);
+			std::stringstream sstr;
+			sstr << std::hex << flag;
+			throw unknown_type_fail(__FILE__, __LINE__, "Unknown JPEG flag: ") << str_info(sstr.str());
 
 			return -1;
 		}
 	}
 	//deleteJPEG(&jpeg);
-	return -1;
+	return 0;
 }
 
 void JPEG::GetDCTs() {
@@ -316,10 +365,15 @@ void JPEG::GetDCTs() {
 		BITSETiterator bit(data.srcDataPtr, data.srcDataLength);
 		DCTdataLength = 0;
 		for (int i = 0; i < data.componentsCount; i++)
-			DCTdataLength += data.imWidth * ((float)data.component[i].horizontalDecimation / (float)data.maxHDecimation) *
-			data.imHeight * ((float)data.component[i].verticalDecimation / (float)data.maxVDecimation);
-		DCTdataLength *= sizeof(INT16)*2;
-		printf("!! Alloc %d bytes", DCTdataLength);
+			DCTdataLength += data.imWidth
+					* ((float) data.component[i].horizontalDecimation
+							/ (float) data.maxHDecimation) * data.imHeight
+					* ((float) data.component[i].verticalDecimation
+							/ (float) data.maxVDecimation);
+		DCTdataLength *= sizeof(INT16) * 2;
+//#ifdef PRINT_DCT_DECODE_PROCESS
+		printf("!! Alloc %d bytes\n", (int)DCTdataLength);
+//#endif
 		//		DCTdataLength = data.imWidth * data.imHeight * data.componentsCount * sizeof(INT16);
 		DCTdata = (INT16*) malloc(DCTdataLength);
 		DCTdataIterator DCTs(DCTdata, DCTdataLength, data);
@@ -337,12 +391,14 @@ void JPEG::GetDCTs() {
 				hTable[i][_DC].tree.ResetCurrentPointer();
 				while (!hTable[i][_DC].tree.MovePtr(bit.GetBit()))
 					bit.NextBit();
-//				printf("\n");
+				//				printf("\n");
 				UINT8 clen = c0 = hTable[i][_DC].tree.GetCode();
+#ifdef PRINT_DCT_DECODE_PROCESS
 				printf("c0=%d\n", c0);
+#endif
 				if (!c0) {
 					bit.NextBit();
-					DCTs[dctIdx++] = (INT8) c0 + DCTs.getPrevDC();
+					DCTs[dctIdx++] = (INT16) c0 + DCTs.getPrevDC();
 				} else {
 					c1 = bit.NextBit().GetBit();
 					bool nativeValue = (bool) c1;
@@ -352,8 +408,10 @@ void JPEG::GetDCTs() {
 						c1 = (c1 << 1) | bit.NextBit().GetBit();
 						c0--;
 					}
-//					printf("\n");
+#ifdef PRINT_DCT_DECODE_PROCESS
+					//					printf("\n");
 					printf("c1=%d\n", c1);
+#endif
 
 					bit.NextBit();
 					if (nativeValue)
@@ -370,8 +428,9 @@ void JPEG::GetDCTs() {
 			// calculating of AC coefficients
 
 			while (dctIdx < 64) {
-//				bit.PrintData();
+				//				bit.PrintData();
 				hTable[i][_AC].tree.ResetCurrentPointer();
+#ifdef PRINT_DCT_DECODE_PROCESS
 				//				UINT8 b;
 				//				bool l;
 				//				do{
@@ -379,6 +438,7 @@ void JPEG::GetDCTs() {
 				//					l = hTable[i][_AC].tree.MovePtr(b);
 				//					bit.NextBit();
 				//				}while (!l);
+#endif
 				while (!hTable[i][_AC].tree.MovePtr(bit.GetBit()))
 					bit.NextBit();
 				c0 = hTable[i][_AC].tree.GetCode();
@@ -419,6 +479,7 @@ void JPEG::GetDCTs() {
 				bit.NextBit();
 			}
 			bit.NextBit();
+#ifdef PRINT_DCT_DECODE_PROCESS
 			printf("\n");
 			for (int i = 0; i < 8; i++) {
 				for (int j = 0; j < 8; j++) {
@@ -427,20 +488,26 @@ void JPEG::GetDCTs() {
 				printf("\n");
 			}
 			printf("\n");
-			if(!DCTs.lastBlock()) DCTs.mvToNextBlock();
-			else{
-				for(int i=0; i<DCTdataLength/2; i++){
+#endif
+			if (!DCTs.lastBlock())
+				DCTs.mvToNextBlock();
+			else {
+#ifdef PRINT_DCT_DECODE_PROCESS
+				for (int i = 0; i < DCTdataLength / 2; i++) {
 					printf("%d ", DCTs[i]);
-					if(!i%8)printf("\n");
-					if(!i%64)printf("\n");
+					if (!i % 8)
+						printf("\n");
+					if (!i % 64)
+						printf("\n");
 				}
+#endif
 				return;
 			}
 		}
 	} catch (int) {
-		fprintf(stderr, "Exception cached!\n");
+		fprintf(stderr, "Exception int cached!\n");
 	} catch (...) {
-		fprintf(stderr, "Exception cached!\n");
+		fprintf(stderr, "Exception ... cached!\n");
 	}
 
 }

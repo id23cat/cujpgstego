@@ -30,7 +30,7 @@ class DCTdataIterator {
 	int hDecimation[3];
 	int vDecimation[3];
 
-	DCTdataIterator *tmpIt;
+//	DCTdataIterator *tmpIt;
 public:
 	DCTdataIterator();
 	DCTdataIterator(INT16 *d, int dl, SOF0 config);

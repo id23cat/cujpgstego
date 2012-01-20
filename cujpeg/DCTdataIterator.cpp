@@ -21,10 +21,7 @@ DCTdataIterator::DCTdataIterator() {
 	vDecimation = {0};
 	curColor = _Y_;
 	curColIdx = 0;
-	tmpIt = NULL;
-
-	//	tmpIt = new DCTdataIterator(*this);
-		}
+}
 
 DCTdataIterator::DCTdataIterator(INT16 *d, int dl, SOF0 config) {
 	assert(d);
@@ -43,8 +40,6 @@ DCTdataIterator::DCTdataIterator(INT16 *d, int dl, SOF0 config) {
 	}
 	curColor = _Y_;
 	curColIdx = 0;
-	tmpIt = NULL;
-	//	tmpIt = new DCTdataIterator(*this);
 }
 
 DCTdataIterator::DCTdataIterator(DCTdataIterator &it) {
@@ -53,7 +48,6 @@ DCTdataIterator::DCTdataIterator(DCTdataIterator &it) {
 	curPtr = it.curPtr;
 	assert(it.dataLength);
 	dataLength = it.dataLength;
-	tmpIt = NULL;
 
 	curColor = it.curColor;
 	curColIdx = it.curColIdx;
@@ -70,11 +64,6 @@ DCTdataIterator::DCTdataIterator(DCTdataIterator &it) {
 
 DCTdataIterator::~DCTdataIterator() {
 	// TODO Auto-generated destructor stub
-
-	if (tmpIt) {
-		delete tmpIt;
-		tmpIt = NULL;
-	}
 }
 
 DCTdataIterator& DCTdataIterator::mvToNextBlock() throw (int) {
@@ -103,11 +92,7 @@ DCTdataIterator& DCTdataIterator::mvToNextBlock() throw (int) {
 }
 
 DCTdataIterator& DCTdataIterator::NextBlock() throw (int) {
-	//	*tmpIt = *this;
-	tmpIt = new DCTdataIterator(*this);
-	tmpIt->mvToNextBlock();
-
-	return *tmpIt;
+	return DCTdataIterator(*this).mvToNextBlock();
 }
 
 DCTdataIterator& DCTdataIterator::mvToPrevBlock() throw (int) {
@@ -136,19 +121,15 @@ DCTdataIterator& DCTdataIterator::mvToPrevBlock() throw (int) {
 }
 
 DCTdataIterator& DCTdataIterator::PrevBlock() throw (int) {
-	//	*tmpIt = *this;
-	tmpIt = new DCTdataIterator(*this);
-	tmpIt->mvToPrevBlock();
-
-	return *tmpIt;
+	return DCTdataIterator(*this).mvToPrevBlock();
 }
 
 INT16 DCTdataIterator::getPrevDC() {
 	if (curColIdx > 0) {
 		INT16 t = PrevBlock()[0];
-		printf("PrevDC = %d\n", t);
-		delete tmpIt;
-		tmpIt = NULL;
+		//		printf("PrevDC = %d\n", t);
+//		delete tmpIt;
+//		tmpIt = NULL;
 		return t;
 		//		return PrevBlock()[0];
 	} else
@@ -156,7 +137,8 @@ INT16 DCTdataIterator::getPrevDC() {
 }
 
 INT16& DCTdataIterator::operator[](int idx) {
-	if ( idx < 0 || idx >= 64 || (curPtr + sizeof(INT16)*idx >= data + dataLength) ) {
+	if (idx < 0 || idx >= 64 || (curPtr + sizeof(INT16) * idx >= data
+			+ dataLength)) {
 		fprintf(stderr,
 				"DCTdataIterator::operator[%d]: out of index at %s :%d", idx,
 				__FILE__, __LINE__);

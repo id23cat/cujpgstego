@@ -46,6 +46,24 @@ int fillZigZag(T M[8][8], T *v) {
 	return 0;
 }
 
+//struct JFIF {
+//	UINT16 length;
+//	UINT8 id[5];
+//	UINT16 version;
+//	UINT8 units;
+//	UINT16 xDensity;
+//	UINT16 yDensity;
+//	UINT8 xThumbnail;
+//	UINT8 yThumbnail;
+//	UINT8 n[3];
+//	void PrintData(){
+//		printf("JFIF (%d bytes):\n", length);
+//		printf(" %s\n", id);
+//		printf("Version %d, units %d, Xdensity=%d, Ydensity=%d\n", version, units, xDensity, yDensity);
+//		printf("Xthumbnail=%d, Ythumbnail=%d\n", xThumbnail, yThumbnail);
+////		printf("sizeof(JFIF)=%d", sizeof(JFIF));
+//	}
+//};
 
 struct JComment { // comment
 	UINT16 length;
@@ -241,6 +259,7 @@ class JPEG {
 //	friend class BITSETiterator;
 
 	struct JComment comment;
+//	struct JFIF jfif;
 //	struct DQT qTableY;
 //	struct DQT qTableCbCr;
 	struct DQT qTable[2];
@@ -259,6 +278,7 @@ class JPEG {
 private:
 	UINT16 readFlag();
 	int readComment();
+	int readJFIF();
 	int readDQT();
 	int readSOF0();
 	int readDHT();
