@@ -104,24 +104,31 @@ TREE::~TREE() {
 	curptr = NULL;
 }
 
-bool TREE::MovePtr(bool branch) throw(int){
-//	printf("branch_%d ", (int)branch); fflush(stdout);
+bool TREE::MovePtr(bool branch) throw (tree_fail) {
+	//	printf("branch_%d ", (int)branch); fflush(stdout);
 	if (branch)
 		if (curptr->right)
 			curptr = curptr->right;
 		else
-			throw 1;
+			throw tree_fail(__FILE__, __LINE__,
+					"TREE::MovePtr(): right branch doesn't exist") << int_info(
+					curptr->depth) << int_info(curptr->data.code);
 	else if (curptr->left)
 		curptr = curptr->left;
 	else
-		throw 1;
+		throw tree_fail(__FILE__, __LINE__,
+				"TREE::MovePtr(): left branch doesn't exist") << int_info(
+				curptr->depth) << int_info(curptr->data.code);
 
-//	curptr->PrintData();
+	//	curptr->PrintData();
 	if (curptr->data.codelength)
 		return true;
 	return false;
 }
 
-UINT8 TREE::GetCode() {
+UINT8 TREE::GetCode()throw (tree_fail)  {
+	if (!curptr)
+		throw tree_fail(__FILE__, __LINE__,
+				"TREE::GetCode(): curptr is NULL");
 	return curptr->data.code;
 }

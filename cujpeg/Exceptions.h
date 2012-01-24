@@ -27,6 +27,7 @@ public:
 	my_exception(std::string file, int line, std::string str){
 		DEBUG_INFO(mess, file.data(), line, str.data());
 	};
+	virtual ~my_exception()throw(){};
 	virtual const char* what() const throw() {return mess;};
 };
 
@@ -34,24 +35,35 @@ struct io_fail: virtual my_exception {
 public:
 	io_fail(std::string str):my_exception(str){};
 	io_fail(std::string file, int line, std::string str):my_exception(file, line, str){};
+	virtual ~io_fail()throw(){};
 };
 
 struct memory_fail: virtual my_exception {
 public:
 	memory_fail(std::string str):my_exception(str){};
 	memory_fail(std::string file, int line, std::string str):my_exception(file, line, str){};
+	virtual ~memory_fail()throw(){};
 };
 
 struct indexing_fail: virtual my_exception {
 public:
 	indexing_fail(std::string str):my_exception(str){};
 	indexing_fail(std::string file, int line, std::string str):my_exception(file, line, str){};
+	virtual ~indexing_fail()throw(){};
 };
 
 struct unknown_type_fail: virtual my_exception {
 public:
 	unknown_type_fail(std::string str):my_exception(str){};
 	unknown_type_fail(std::string file, int line, std::string str):my_exception(file, line, str){};
+	virtual ~unknown_type_fail()throw(){};
+};
+
+struct tree_fail: virtual my_exception {
+public:
+	tree_fail(std::string str):my_exception(str){};
+	tree_fail(std::string file, int line, std::string str):my_exception(file, line, str){};
+	virtual ~tree_fail()throw(){};
 };
 
 #endif /* EXCEPTIONS_H_ */

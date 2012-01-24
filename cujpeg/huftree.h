@@ -9,7 +9,9 @@
 #define TREE_H_
 #include <boost/dynamic_bitset.hpp>
 #include <stdio.h>
-#include "huftree.h"
+#include "Exceptions.h"
+//#include "huftree.h"
+
 
 typedef unsigned char UINT8;
 typedef unsigned short UINT16;
@@ -58,8 +60,8 @@ public:
 		curptr = tree;
 	}
 
-	bool MovePtr(bool branch) throw(int);		// return true if curptr points to the list
-	UINT8 GetCode();				// return code from node that currently pionted by curptr
+	bool MovePtr(bool branch) throw (tree_fail);		// return true if curptr points to the list
+	UINT8 GetCode()throw (tree_fail) ;				// return code from node that currently pionted by curptr
 };
 
 #endif /* TREE_H_ */
