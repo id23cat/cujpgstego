@@ -62,7 +62,8 @@ int StreamReader::OpenFile(char *fname) throw (io_fail){
 				"StreamReader::OpenFile(): Can't open file ")
 				<< str_info(fname);
 	}
-	fileName = (char*) malloc(strlen(fname) + 1);
+//	fileName = (char*) malloc(strlen(fname) + 1);
+	SAFE_MALLOC_CHAR(fileName, strlen(fname) + 1);
 	strcpy(fileName, fname);
 
 	return fileLength();;

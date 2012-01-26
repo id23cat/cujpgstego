@@ -9,14 +9,72 @@
 #define EXCEPTIONS_H_
 #include <boost/exception/all.hpp>
 #include <stdexcept>
-//#include <ios_base.h>
+//#define DEBUG
+
+#ifdef DEBUG
+#include <signal.h>
+#include <execinfo.h>
+#include <cxxabi.h>
+#include <dlfcn.h>
+#include <stdlib.h>
+#endif
 
 //static char str_err[256];
 //std::string str_err;
 #define DEBUG_INFO(strout, file, line, str) sprintf(strout, "Error at %s:%d: %s" , file , line, str);
 
+
+#define SAFE_MALLOC(ptr, count, TYPE) if(!(ptr = (TYPE*) malloc(count * sizeof(TYPE)))){\
+			char str[256];\
+			sprintf(str, "malloc(%d) -- failed", count * sizeof(TYPE));\
+			throw memory_fail(__FILE__, __LINE__, str);}
+
+#define SAFE_MALLOC_INT16(ptr, count) if(!(ptr = (INT16*) malloc(count * sizeof(INT16)))){\
+			char str[256];\
+			sprintf(str, "malloc(%d) -- failed", count * sizeof(INT16));\
+			throw memory_fail(__FILE__, __LINE__, str);}
+
+#define SAFE_MALLOC_UINT16(ptr, count) if(!(ptr = (UINT16*) malloc(count * sizeof(UINT16)))){\
+			char str[256];\
+			sprintf(str, "malloc(%ld) -- failed", count * sizeof(UINT16));\
+			throw memory_fail(__FILE__, __LINE__, str);}
+
+#define SAFE_MALLOC_INT8(ptr, count) if(!(ptr = (INT8*) malloc(count * sizeof(INT8)))){\
+			char str[256];\
+			sprintf(str, "malloc(%ld) -- failed", count * sizeof(INT8));\
+			throw memory_fail(__FILE__, __LINE__, str);}
+
+#define SAFE_MALLOC_UINT8(ptr, count) if(!(ptr = (UINT8*) malloc(count * sizeof(UINT8)))){\
+			char str[256];\
+			sprintf(str, "malloc(%d) -- failed", count * sizeof(UINT8));\
+			throw memory_fail(__FILE__, __LINE__, str);}
+
+#define SAFE_MALLOC_CHAR(ptr, count) if(!(ptr = (char*) malloc(count * sizeof(char)))){\
+			char str[256];\
+			sprintf(str, "malloc(%d) -- failed", count * sizeof(char));\
+			throw memory_fail(__FILE__, __LINE__, str);}
+
+#define CALL_STACK(strmes)using namespace abi;\
+    enum{ MAX_DEPTH = 10 };\
+    void *trace[MAX_DEPTH];\
+    Dl_info dlinfo;\
+    int status;\
+    const char *symname;\
+    char *demangled;\
+    int trace_size = backtrace(trace, MAX_DEPTH);\
+    sprintf(strmes, "\nCall stack: \n");\
+    for (int i=0; i<trace_size; ++i){\
+        if(!dladdr(trace[i], &dlinfo)) continue;\
+        symname = dlinfo.dli_sname;\
+        demangled = __cxa_demangle(symname, NULL, 0, &status);\
+        if(status == 0 && demangled) symname = demangled;\
+        sprintf(strmes,"%sobject: %s, function: %s\n", strmes, dlinfo.dli_fname, symname);\
+        if (demangled) free(demangled);\
+    }
+
 typedef boost::error_info<struct int_my_info, int> int_info;
 typedef boost::error_info<struct str_my_info, std::string> str_info;
+
 
 
 struct my_exception: virtual boost::exception, virtual std::exception {

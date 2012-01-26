@@ -9,6 +9,10 @@
 //#define FNAME "g.jpg"
 //#define FNAME "005.jpg"
 //#define FNAME "106.jpg"
+#define FNAME "11-out.jpg"
+
+//#define LOG "106.log"
+#define LOG "11-out.log"
 
 int main(int argc, char **argv)
 {
@@ -16,7 +20,7 @@ int main(int argc, char **argv)
 	JPEG jpeg((char*)FNAME);
 	jpeg.GetDCTs();
 	std::cout << "Read is OK\n";
-	if(!jpeg.cmpWith((char*)"106.log")){
+	if(!jpeg.cmpWith((char*)LOG)){
 		std::cout << "Not equal\n";
 		return 1;
 	}

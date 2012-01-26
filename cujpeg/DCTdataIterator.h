@@ -47,6 +47,7 @@ public:
 	DCTdataIterator& mvToPrevBlock()throw (indexing_fail);		// move current pointer to previous block & return current pointer
 	DCTdataIterator PrevBlock()throw (indexing_fail);			// return pointer to previous block (curBlkPtr does not change)
 	INT16 getPrevDC()throw (indexing_fail);	// return DC coefficient from prev. block from curColor
+	INT16* getCurBlock(){return curBlkPtr;};
 
 	INT16& operator[](int idx) throw (indexing_fail);
 	INT16& LineView(int y, int x);				// Line indexing by 2d matrix view of DCT block

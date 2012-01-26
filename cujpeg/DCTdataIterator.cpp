@@ -28,7 +28,7 @@ DCTdataIterator::DCTdataIterator(INT16 *d, long long dl, SOF0 config) {
 	data = d;
 	curBlkPtr = data;
 	assert(dl);
-	dataLength = dl;
+	dataLength = dl*sizeof(INT16);
 
 	colorCount = config.componentsCount;
 	width = config.imWidth;
@@ -165,7 +165,17 @@ INT16 DCTdataIterator::getPrevDC() throw (indexing_fail) {
 			//			PrevBlock();
 			//			PrevBlock()[0];
 			return t;
-		} else
+		} else if(curColor != _Y && curColIdx == 0){
+			INT16 t=0;
+			try{
+				//move to previous block group
+				t = PrevBlock().PrevBlock(). PrevBlock().PrevBlock(). PrevBlock(). PrevBlock()[0];
+			}catch(indexing_fail){
+//				printf("\nFirst group\n");
+				return 0;
+			}
+			return t;
+		}else
 			return 0;
 	} catch (indexing_fail &exc) {
 		exc << str_info("From DCTdataIterator::getPrevDC()");
@@ -202,18 +212,21 @@ INT16& DCTdataIterator::operator[](int idx) throw (indexing_fail) {
 
 INT16& DCTdataIterator::LineView(int y, int x) {
 	return curBlkPtr[y * 8 + x];
+//	return curBlkPtr[Line2D[y][x]];
 }
 
 INT16& DCTdataIterator::ZigZagView(int y, int x) {
-	return curBlkPtr[ZigZag[y][x]];
+	return curBlkPtr[Natural_order2D[y][x]];
 }
 
 INT16& DCTdataIterator::LineView(int x) {
 	return curBlkPtr[x];
+//	return curBlkPtr[Line[(int)x/8][(int)x%8]];
+//	return curBlkPtr[Line[x]];
 }
 
 INT16& DCTdataIterator::ZigZagView(int x) {
-	return curBlkPtr[ZigZag[(int) x / 8][(int) x % 8]];
+	return curBlkPtr[Natural_order[x]];
 }
 
 void DCTdataIterator::PrintData() throw (indexing_fail) {

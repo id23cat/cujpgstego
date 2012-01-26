@@ -9,7 +9,7 @@
 #define JPEGFILE_H_
 
 #include "StreamReader.h"
-#include <boost/dynamic_bitset.hpp>
+//#include <boost/dynamic_bitset.hpp>
 #include "huftree.h"
 //#include "DCTdataIterator.h"
 
@@ -27,21 +27,33 @@ typedef unsigned int UINT32;
 #define BLK_LENGTH 64
 #define BLK_LENGTH_BYTE 64*sizeof(INT16)
 
-static const int ZigZag[8][8] = {
-		{ 0, 1, 5, 6, 14, 15, 27, 28 },
-		{ 2, 4, 7, 13, 16, 26, 29, 42 },
-		{ 3, 8, 12, 17, 25, 30, 41, 43 },
-		{ 9, 11, 18, 24, 31, 40, 44, 53 },
-		{ 10, 19, 23, 32, 39, 45, 52, 54 },
-		{ 20, 22, 33, 38, 46, 51, 55, 60 },
-		{ 21, 34, 37, 47, 50, 56, 59, 61 },
-		{ 35, 36, 48, 49, 57, 58, 62, 63 } };
+static const UINT8 ZigZag_order2D[8][8] = { { 0, 1, 5, 6, 14, 15, 27, 28 }, {
+		2, 4, 7, 13, 16, 26, 29, 42 }, { 3, 8, 12, 17, 25, 30, 41, 43 }, { 9,
+		11, 18, 24, 31, 40, 44, 53 }, { 10, 19, 23, 32, 39, 45, 52, 54 }, { 20,
+		22, 33, 38, 46, 51, 55, 60 }, { 21, 34, 37, 47, 50, 56, 59, 61 }, { 35,
+		36, 48, 49, 57, 58, 62, 63 } };
+static const UINT8 ZigZag_order[BLK_LENGTH] =
+		{ 0, 1, 5, 6, 14, 15, 27, 28, 2, 4, 7, 13, 16, 26, 29, 42, 3, 8, 12,
+				17, 25, 30, 41, 43, 9, 11, 18, 24, 31, 40, 44, 53, 10, 19, 23,
+				32, 39, 45, 52, 54, 20, 22, 33, 38, 46, 51, 55, 60, 21, 34, 37,
+				47, 50, 56, 59, 61, 35, 36, 48, 49, 57, 58, 62, 63 };
+static const UINT8 Natural_order2D[8][8] = { { 0, 1, 8, 16, 9, 2, 3, 10 }, {
+		17, 24, 32, 25, 18, 11, 4, 5 }, { 12, 19, 26, 33, 40, 48, 41, 34 }, {
+		27, 20, 13, 6, 7, 14, 21, 28 }, { 35, 42, 49, 56, 57, 50, 43, 36 }, {
+		29, 22, 15, 23, 30, 37, 44, 51 }, { 58, 59, 52, 45, 38, 31, 39, 46 }, {
+		53, 60, 61, 54, 47, 55, 62, 63 } };
+static const UINT8 Natural_order[BLK_LENGTH + 16] = { 0, 1, 8, 16, 9, 2, 3, 10,
+		17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20,
+		13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23,
+		30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55,
+		62, 63, 63, 63, 63, 63, 63, 63, 63, 63, /* extra entries for safety in decoder */
+		63, 63, 63, 63, 63, 63, 63, 63 };
 
 template<typename T>
 int fillZigZag(T M[8][8], T *v) {
 	for (int i = 0; i < 8; i++)
 		for (int j = 0; j < 8; j++)
-			M[i][j] = v[ZigZag[i][j]];
+			M[i][j] = v[ZigZag_order2D[i][j]];
 	return 0;
 }
 
@@ -197,6 +209,11 @@ struct SOF0 { // Baseline DCT
 	UINT8 maxVDecimation;
 	UINT8 maxHDecimation;
 	int memmv1bLeft(UINT8 *start, int len);
+	void PrintSrcData(){
+		for(size_t i=0; i<srcDataLength; i++)
+			printf("%02X ", srcDataPtr[i]);
+		printf("\n");
+	}
 	void PrintData() {
 		if (length) {
 			printf(
@@ -257,9 +274,9 @@ struct SOF0 { // Baseline DCT
 //};
 
 class BITSETiterator {
-	long dataLength;
+	size_t dataLength;
 	UINT8 *data;
-	UINT8 byteIdx;
+	size_t byteIdx;
 	UINT8 bitIdx;
 public:
 	BITSETiterator() :
@@ -291,15 +308,24 @@ public:
 		return *this;
 	}
 	;
-	UINT8 GetBit() { /*printf(" %d ", data[byteIdx]>>(7-bitIdx)&1);*/
+	UINT8 GetBit() {
+		printf(" %d ", data[byteIdx] >> (7 - bitIdx) & 1);
+		fflush(stdout);
 		return data[byteIdx] >> (7 - bitIdx) & 1;
 	}
 	;
 	void PrintData() {
 		printf("\n");
-		for (int i = byteIdx; i < dataLength; i++)
+		for (size_t i = byteIdx; i < dataLength; i++)
 			printf(" %x", (int) data[i]);
 		printf("\n");
+	}
+	;
+	void PrintData(int len) {
+		printf("\n\t[");
+		for (size_t i = byteIdx; i < byteIdx+len; i++)
+			printf(" %X", (int) data[i]);
+		printf("]\n");
 	}
 	;
 };
@@ -321,7 +347,7 @@ class JPEG {
 
 	//	INT16 DCTs[64];
 	INT16 *DCTdata;
-	long DCTdataLength;
+	size_t DCTdataLength;
 
 	StreamReader jfile;
 private:
@@ -338,8 +364,8 @@ private:
 public:
 	JPEG(char *jfname);
 	virtual ~JPEG();
-	void GetDCTs();
-	bool cmpWith(char *fname);
+	void GetDCTs()throw(memory_fail);
+	bool cmpWith(char *fname)throw(memory_fail);
 	void PrintData(/*class DCTdataIterator &d,*/int count);
 };
 
