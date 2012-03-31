@@ -8,46 +8,19 @@
 #ifndef JPEGFILE_H_
 #define JPEGFILE_H_
 
+
+#include "DCTdataIterator.h"
 #include "StreamReader.h"
 //#include <boost/dynamic_bitset.hpp>
 #include "huftree.h"
-//#include "DCTdataIterator.h"
+#include "datatypes.h"
 
 using namespace std;
+//using namespace Iterators;
 
-#define LOW(byte) (byte & 0x0F)
-#define HIGH(byte) (byte >> 4)
+//class KZdataIterator;
 
-typedef unsigned char UINT8;
-typedef signed char INT8;
-typedef unsigned short UINT16;
-typedef signed short INT16;
-typedef unsigned int UINT32;
 
-#define BLK_LENGTH 64
-#define BLK_LENGTH_BYTE 64*sizeof(INT16)
-
-static const UINT8 ZigZag_order2D[8][8] = { { 0, 1, 5, 6, 14, 15, 27, 28 }, {
-		2, 4, 7, 13, 16, 26, 29, 42 }, { 3, 8, 12, 17, 25, 30, 41, 43 }, { 9,
-		11, 18, 24, 31, 40, 44, 53 }, { 10, 19, 23, 32, 39, 45, 52, 54 }, { 20,
-		22, 33, 38, 46, 51, 55, 60 }, { 21, 34, 37, 47, 50, 56, 59, 61 }, { 35,
-		36, 48, 49, 57, 58, 62, 63 } };
-static const UINT8 ZigZag_order[BLK_LENGTH] =
-		{ 0, 1, 5, 6, 14, 15, 27, 28, 2, 4, 7, 13, 16, 26, 29, 42, 3, 8, 12,
-				17, 25, 30, 41, 43, 9, 11, 18, 24, 31, 40, 44, 53, 10, 19, 23,
-				32, 39, 45, 52, 54, 20, 22, 33, 38, 46, 51, 55, 60, 21, 34, 37,
-				47, 50, 56, 59, 61, 35, 36, 48, 49, 57, 58, 62, 63 };
-static const UINT8 Natural_order2D[8][8] = { { 0, 1, 8, 16, 9, 2, 3, 10 }, {
-		17, 24, 32, 25, 18, 11, 4, 5 }, { 12, 19, 26, 33, 40, 48, 41, 34 }, {
-		27, 20, 13, 6, 7, 14, 21, 28 }, { 35, 42, 49, 56, 57, 50, 43, 36 }, {
-		29, 22, 15, 23, 30, 37, 44, 51 }, { 58, 59, 52, 45, 38, 31, 39, 46 }, {
-		53, 60, 61, 54, 47, 55, 62, 63 } };
-static const UINT8 Natural_order[BLK_LENGTH + 16] = { 0, 1, 8, 16, 9, 2, 3, 10,
-		17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20,
-		13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23,
-		30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55,
-		62, 63, 63, 63, 63, 63, 63, 63, 63, 63, /* extra entries for safety in decoder */
-		63, 63, 63, 63, 63, 63, 63, 63 };
 
 template<typename T>
 int fillZigZag(T M[8][8], T *v) {
@@ -85,13 +58,7 @@ struct JComment { // comment
 	;
 };
 
-#define WORDLEN_1BYTE 0		// 1 byte length
-#define WORDLEN_2BYTE 1		// 2 bytes length
-#define _Y_ 0
-#define _CBCR_ 1
-#define _Y 0
-#define _CB 1
-#define _CR 2
+
 
 struct DQT { // Quantization table
 	UINT16 length;
@@ -110,9 +77,6 @@ struct DQT { // Quantization table
 	}
 	;
 };
-
-#define _DC 0
-#define _AC 1
 
 struct DHT { // Huffman table
 	UINT16 length;
@@ -208,6 +172,7 @@ struct SOF0 { // Baseline DCT
 	struct COLCOMPONENT component[3];
 	UINT8 maxVDecimation;
 	UINT8 maxHDecimation;
+	UINT8 decimation[3];
 	int memmv1bLeft(UINT8 *start, int len);
 	void PrintSrcData(){
 		for(size_t i=0; i<srcDataLength; i++)
@@ -273,100 +238,128 @@ struct SOF0 { // Baseline DCT
 //	}
 //};
 
-class BITSETiterator {
-	size_t dataLength;
-	UINT8 *data;
-	size_t byteIdx;
-	UINT8 bitIdx;
-public:
-	BITSETiterator() :
-		dataLength(0), data(NULL), byteIdx(0), bitIdx(0) {
-	}
-	;
-	BITSETiterator(UINT8 *d, long dl) :
-		dataLength(dl), data(d), byteIdx(0), bitIdx(0) {
-	}
-	;
-	~BITSETiterator() {
-		data = NULL;
-	}
-	;
-	BITSETiterator Begin() {
-		byteIdx = 0;
-		bitIdx = 0;
-		return *this;
-	}
-	;
-	BITSETiterator NextBit() {
-		if (bitIdx < 7)
-			bitIdx++;
-		else if (byteIdx < dataLength - 1) {
-			byteIdx++;
-			bitIdx = 0;
-		} else
-			throw 1;
-		return *this;
-	}
-	;
-	UINT8 GetBit() {
-		printf(" %d ", data[byteIdx] >> (7 - bitIdx) & 1);
-		fflush(stdout);
-		return data[byteIdx] >> (7 - bitIdx) & 1;
-	}
-	;
-	void PrintData() {
-		printf("\n");
-		for (size_t i = byteIdx; i < dataLength; i++)
-			printf(" %x", (int) data[i]);
-		printf("\n");
-	}
-	;
-	void PrintData(int len) {
-		printf("\n\t[");
-		for (size_t i = byteIdx; i < byteIdx+len; i++)
-			printf(" %X", (int) data[i]);
-		printf("]\n");
-	}
-	;
-};
+//class DCTdataIterator;
+
+//struct DCT{
+//	INT16 *data;
+//	size_t DCTlength;
+//	DCT(DCT& src){ data = src.data; DCT
+//};
+
+//struct KZDCT: public DCT{
+//	INT16 *Ydata;
+//	size_t Ylength;
+//	INT16 *Cbdata;
+//	size_t Cblength;
+//	INT16 *Crdata;
+//	size_t Crlength;
+//};
 
 class JPEG {
-	//	friend class BITSETiterator;
+	StreamReader jfile;		// stream descriptor
 
 	struct JComment comment;
-	//	struct JFIF jfif;
-	//	struct DQT qTableY;
-	//	struct DQT qTableCbCr;
 	struct DQT qTable[2];
 	struct SOF0 data;
 	struct DHT hTable[2][2]; // [tableID][DC/AC]
-	//	map<UINT8, struct DHT, Compare> mm;
-	//	struct SOS scan;
 
-	//	UINT8 *dataPtr;
-
-	//	INT16 DCTs[64];
-	INT16 *DCTdata;
-	size_t DCTdataLength;
-
-	StreamReader jfile;
 private:
-	UINT16 readFlag();
-	int readComment();
-	int readJFIF();
-	int readDQT();
-	int readSOF0();
-	int readDHT();
-	int readSOS();
-	void deleteJPEG();
-	int parseJpeg();
+//	DCT DCTsdata;
+	INT16 *DCTdata;
+	size_t DCTdataLength;		// count of all DCTs
+
+private:
+	UINT16 readFlag();		// read 2 bytes
+	int readComment();		// read comment section from a stream
+	int readJFIF();			// read JFIF section
+	int readDQT();			// read DQT section
+	int readSOF0();			// read SOF0 section
+	int readDHT();			// ..
+	int readSOS();			// ..
+	//void deleteJPEG();
+	int parseJpeg();		// read jpeg sections and put data to respective structures
+public:
+	class DCTdataIterator /*:public JustVector<INT16>*/{
+		JPEG *jpeg;
+		INT16* beginAddr;
+		INT16* endAddr;
+		//		static int objectCount;
+		//	static DCTdataIterator *IteratorObjects;
+
+		INT16 *curBlkPtr;
+		int curColor;
+		int curColIdx;
+
+		int colorCount;
+		//		UINT8 decimation[3];
+	private:
+		void selfCheckNULL(std::string file, int line) throw (NULLptr_fail);	// self checking for NULL pointers of critical parameters
+
+	public:
+		DCTdataIterator();
+		DCTdataIterator(JPEG *j)throw (NULLptr_fail);
+		DCTdataIterator(const DCTdataIterator &it)throw (NULLptr_fail);
+		virtual ~DCTdataIterator();
+
+		int color();
+		bool lastBlock()throw (NULLptr_fail);
+		bool firstBlock()throw (NULLptr_fail);
+
+		DCTdataIterator& begin()throw (NULLptr_fail);
+		DCTdataIterator& end()throw (NULLptr_fail);
+
+		DCTdataIterator& mvToNextBlock() throw (indexing_fail); // move current pointer to next block & return current pointer
+		DCTdataIterator& NextBlock() throw (indexing_fail); // return pointer to next block (curBlkPtr does not change)
+		DCTdataIterator& mvToPrevBlock() throw (indexing_fail); // move current pointer to previous block & return current pointer
+		DCTdataIterator PrevBlock() throw (indexing_fail); // return pointer to previous block (curBlkPtr does not change)
+		INT16 getPrevDC() throw (indexing_fail); // return DC coefficient from prev. block from curColor
+		INT16* getCurBlock();
+
+		INT16& operator[](long long idx) throw (indexing_fail);
+		//INT16& operator[](long long idx) throw (indexing_fail);
+
+		INT16& LineView(int y, int x); // Line indexing by 2d matrix view of DCT block
+		INT16& ZigZagView(int y, int x); // ZigZag indexing by 2d matrix view of DCT block
+		INT16& LineView(int x); // Line indexing by vector view of DCT block
+		INT16& ZigZagView(int x); // ZigZag indexing by vector view of DCT block
+
+		void PrintData() throw (indexing_fail);
+	};
+
+//	class KZdataIterator: public DCTdataIterator {
+//	public:
+//		KZdataIterator(){};
+//		KZdataIterator(JPEG *j) :
+//			DCTdataIterator(j) {};
+//
+//		KZdataIterator(const KZdataIterator &it) :
+//			DCTdataIterator(it) {};
+//		virtual ~KZdataIterator() {};
+//
+////		KZdataIterator begin(){return this.}
+////		KZdataIterator end(){}
+//
+//		INT16& operator[](int idx) throw (indexing_fail);		// move to next item in block
+//		INT16& operator++()	throw(indexing_fail);				// move to next block
+//
+//		KZdataIterator& operator&(KZdataIterator it) throw (indexing_fail);
+//	};
 
 public:
 	JPEG(char *jfname);
 	virtual ~JPEG();
-	void GetDCTs()throw(memory_fail);
-	bool cmpWith(char *fname)throw(memory_fail);
-	void PrintData(/*class DCTdataIterator &d,*/int count);
-};
 
+	void GetDCTs()throw(memory_fail);				// decode DCT coefficients to DCTdata
+	bool cmpWith(char *fname)throw(memory_fail);	// compare DCTs with existing log file
+//	KZdataIterator<INT16> getKZIterator();			// create iterator for a DCT structures
+//	KZdataIterator begin(){
+//		return KZdataIterator(this);
+//	};
+//	KZdataIterator end(){
+//		return static_cast<KZdataIterator>(KZdataIterator(this).end());
+//	};
+	void PrintData(int count=0);		// print DCT data
+
+};
+//#endif
 #endif /* JPEGFILE_H_ */

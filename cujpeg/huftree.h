@@ -10,11 +10,12 @@
 #include <boost/dynamic_bitset.hpp>
 #include <stdio.h>
 #include "Exceptions.h"
+#include "datatypes.h"
 //#include "huftree.h"
 
 
-typedef unsigned char UINT8;
-typedef unsigned short UINT16;
+//typedef unsigned char UINT8;
+//typedef unsigned short UINT16;
 
 struct treeLIST {
 	UINT8 code;

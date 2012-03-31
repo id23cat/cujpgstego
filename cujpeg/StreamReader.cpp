@@ -62,16 +62,18 @@ int StreamReader::OpenFile(char *fname) throw (io_fail){
 				"StreamReader::OpenFile(): Can't open file ")
 				<< str_info(fname);
 	}
-//	fileName = (char*) malloc(strlen(fname) + 1);
-	SAFE_MALLOC_CHAR(fileName, strlen(fname) + 1);
-	strcpy(fileName, fname);
+
+	fileName = std::string(fname);
+
+//	SAFE_MALLOC_CHAR(fileName, strlen(fname) + 1);
+//	strcpy(fileName, fname);
 
 	return fileLength();;
 }
 
 int StreamReader::CloseFile() throw (io_fail){
-	if (!file && fileName) {
-		fprintf(stderr, "File %s not openend", fileName);
+	if (!file && fileName.empty()) {
+		std::cerr << "File " << fileName << " not opened" << std::endl;
 		if (enable_exceptions)
 			throw io_fail(__FILE__, __LINE__,
 					"StreamReader::CloseFile(): File not openend: ")
@@ -81,9 +83,9 @@ int StreamReader::CloseFile() throw (io_fail){
 	if (file)
 		fclose(file);
 	file = NULL;
-	if (fileName)
-		free(fileName);
-	fileName = NULL;
+//	if (fileName)
+//		free(fileName);
+//	fileName = NULL;
 
 	return 0;
 }

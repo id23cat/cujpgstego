@@ -12,7 +12,7 @@
 
 class StreamReader {
 	FILE *file;
-	char *fileName;
+	std::string fileName;
 	long long filelength;
 public:
 	bool enable_exceptions;
@@ -20,7 +20,7 @@ private:
 	size_t fileLength()throw ();
 public:
 	StreamReader() :
-		file(NULL), fileName(NULL), filelength(-1), enable_exceptions(false) {
+		file(NULL), filelength(-1), enable_exceptions(false) {
 	}
 
 	StreamReader(FILE *f) :
@@ -28,7 +28,7 @@ public:
 	}
 
 	StreamReader(char *fname) throw (io_fail):
-		file(NULL), fileName(NULL), filelength(-1), enable_exceptions(false)  {
+		file(NULL), filelength(-1), enable_exceptions(false)  {
 		file = fopen(fname, "rb");
 		if (!file) {
 			throw io_fail(__FILE__, __LINE__,
@@ -53,6 +53,7 @@ public:
 	int feof(){return ::feof(file);};
 	int OpenFile(char *fname)throw (io_fail);
 	int CloseFile() throw (io_fail);
+	std::string FileName(){ return fileName;};
 };
 
 #endif /* JPEGREADER_H_ */

@@ -9,10 +9,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include "JPEGfile.h"
-#include "DCTdataIterator.h"
+//#include "DCTdataIterator.h"
 
 //#define PRINT_DATA
-#define PRINT_DCT_DECODE_PROCESS
+//#define PRINT_DCT_DECODE_PROCESS
 //#define PRINT_TREE
 #define PRINT_CMP_PROCESS
 
@@ -49,12 +49,14 @@ int SOF0::memmv1bLeft(UINT8 *start, int len) {
 JPEG::~JPEG() {
 	if (comment.str)
 		free(comment.str);
+
 	for (int i = 0; i < 2; i++)
 		for (int j = 0; j < 2; j++)
 			if (hTable[i][j].code && hTable[i][j].mcodeslength) {
 				free(hTable[i][j].code);
 				hTable[i][j].mcodeslength = 0;
 			}
+
 	if (data.srcDataPtr)
 		free(data.srcDataPtr);
 	if (DCTdata)
@@ -179,6 +181,7 @@ int JPEG::readSOF0() {
 		data.component[i].verticalDecimation = LOW(u8);
 		if (data.maxVDecimation < data.component[i].verticalDecimation)
 			data.maxVDecimation = data.component[i].verticalDecimation;
+		data.decimation[i] = data.component[i].verticalDecimation * data.component[i].horizontalDecimation;
 		jfile.Read(&data.component[i].qtID, 1, 1);
 		//		data.component[i].
 
@@ -412,19 +415,19 @@ void JPEG::GetDCTs() throw (memory_fail) {
 //		memset(DCTdata, 1, DCTdataLength * sizeof(INT16));
 
 #ifdef PRINT_DCT_DECODE_PROCESS
-		//printf("%04X %04X\n", DCTdata[DCTdataLength-1], DCTdata[DCTdataLength]);
-		for(size_t i=0,j=0; i<DCTdataLength; i++,j++){
-			printf("%04X ", DCTdata[i]);
-			if(j==40){j=0; printf("\n");}
-		}
-		printf("\n!! Alloc %d bytes in %d words\n",
-				(int) (&(DCTdata[DCTdataLength]) - DCTdata),
-				(int) DCTdataLength);
+//		//printf("%04X %04X\n", DCTdata[DCTdataLength-1], DCTdata[DCTdataLength]);
+//		for(size_t i=0,j=0; i<DCTdataLength; i++,j++){
+//			printf("%04X ", DCTdata[i]);
+//			if(j==40){j=0; printf("\n");}
+//		}
+//		printf("\n!! Alloc %d bytes in %d words\n",
+//				(int) (&(DCTdata[DCTdataLength]) - DCTdata),
+//				(int) DCTdataLength);
 #endif
 		//		DCTdataLength = data.imWidth * data.imHeight * data.componentsCount * sizeof(INT16);
 
 //		memset(DCTdata, 1, DCTdataLength);
-		DCTdataIterator DCTs(DCTdata, DCTdataLength, data);
+		JPEG::DCTdataIterator DCTs(this)/*(DCTdata, DCTdataLength, data.decimation)*/;
 
 		int dctIdx;
 		UINT8 c0, c1;//, clen;
@@ -434,12 +437,14 @@ void JPEG::GetDCTs() throw (memory_fail) {
 
 #ifdef PRINT_DCT_DECODE_PROCESS
 		data.PrintSrcData();
+		bit.BitDebug(true);
 #endif
 
 		while (blk_counter < blkCount) {
 #ifdef PRINT_DCT_DECODE_PROCESS
 			{
 				printf("\n");
+				printf("%s\n", jfile.FileName().data());
 				printf("=== Block#: %d ===\n", blk_counter);
 				printf("blkCount = %d, counter = %d\n", blkCount, blk_counter);
 				//				PrintData(blkCount);
@@ -460,7 +465,7 @@ void JPEG::GetDCTs() throw (memory_fail) {
 #endif
 				if (!c0) {
 					bit.NextBit();
-					DCTs[dctIdx++] = (INT16) c0 + DCTs.getPrevDC();
+					TRY_CATCH_THROW(DCTs[dctIdx++] = (INT16) c0 + DCTs.getPrevDC());
 				} else {
 					c1 = bit.NextBit().GetBit();
 					bool nativeValue = (bool) c1;
@@ -486,6 +491,9 @@ void JPEG::GetDCTs() throw (memory_fail) {
 					}
 				}
 			}
+#ifdef PRINT_DCT_DECODE_PROCESS
+			printf("DCT=%d\n", DCTs[dctIdx-1]);
+#endif
 
 			// calculating of AC coefficients
 
@@ -540,6 +548,9 @@ void JPEG::GetDCTs() throw (memory_fail) {
 					}
 				} else if (!clen)
 					DCTs[dctIdx++] = 0;
+#ifdef PRINT_DCT_DECODE_PROCESS
+			printf("DCT=%d\n", DCTs[dctIdx-1]);
+#endif
 				bit.NextBit();
 			}
 			bit.NextBit();
@@ -558,14 +569,14 @@ void JPEG::GetDCTs() throw (memory_fail) {
 			if (!DCTs.lastBlock())
 				DCTs.mvToNextBlock();
 			else {
-#ifdef PRINT_DCT_DECODE_PROCESS
-				for (int i = 0; i < blkCount; i++) {
-					for (int j = 0; j < 64; j++) {
-						printf("%d ", DCTdata[i * 64 + j]);
-					}
-					printf("\n");
-				}
-#endif
+//#ifdef PRINT_DCT_DECODE_PROCESS
+//				for (int i = 0; i < blkCount; i++) {
+//					for (int j = 0; j < 64; j++) {
+//						printf("%d ", DCTdata[i * 64 + j]);
+//					}
+//					printf("\n");
+//				}
+//#endif
 				return;
 			}
 		}
@@ -590,8 +601,8 @@ bool JPEG::cmpWith(char *fname) throw (memory_fail) {
 		cFile.Read(curptr, sizeof(INT16), BLK_LENGTH);
 		curptr += BLK_LENGTH;
 	}
-	DCTdataIterator it1(DCTdata, DCTdataLength, data);
-	DCTdataIterator it2(cdat, DCTdataLength, data);
+	JPEG::DCTdataIterator it1(this)/*(DCTdata, DCTdataLength, data.decimation)*/;
+	JPEG::DCTdataIterator it2(this)/*(cdat, DCTdataLength, data.decimation)*/;
 	int ret = 0;
 
 	int r = 0;
@@ -626,8 +637,8 @@ bool JPEG::cmpWith(char *fname) throw (memory_fail) {
 		std::cout << std::endl;
 #endif
 		r = 0;
-		it1.mvToNextBlock();
-		it2.mvToNextBlock();
+		if(!it1.lastBlock()) it1.mvToNextBlock();
+		if(!it2.lastBlock()) it2.mvToNextBlock();
 	}
 	free(cdat);
 	if (ret)
@@ -635,13 +646,297 @@ bool JPEG::cmpWith(char *fname) throw (memory_fail) {
 	return true;
 }
 
+//KZdataIterator JPEG::getKZIterator(){
+//	return KZdataIterator(DCTdata, DCTdataLength, data);
+//}
+
+//KZdataIterator<INT16> JPEG::getKZIterator(){
+////	return new KZdataIterator<INT16>(DCTdata, DCTdataLength, data.decimation);
+//	return KZdataIterator<INT16>(DCTdata, DCTdataLength);
+//}
+
 void JPEG::PrintData(/*class DCTdataIterator &d,*/int count) {
 	//	class DCTdataIterator t = d;
+	if(count == 0)
+		count = DCTdataLength-1;
 	for (int i = 0; i < count; i++) {
 		for (int j = 0; j < 64; j++) {
 			printf("%d ", DCTdata[i * 64 + j]/*, t[j]*/);
 		}
 		printf("\n");
-		//		t.NextBlock();
 	}
 }
+
+void JPEG::DCTdataIterator::selfCheckNULL(std::string file, int line) throw (NULLptr_fail){
+	if(jpeg == NULL || jpeg->DCTdata == NULL)
+		throw NULLptr_fail(file, line,
+						"DCTdataIterator(JPEG *j): obtained a null pointer");
+}
+
+JPEG::DCTdataIterator::DCTdataIterator(){
+	jpeg = NULL;
+	curBlkPtr = NULL;
+	beginAddr = NULL;
+	endAddr = NULL;
+
+	colorCount = 0;
+	curColor = _Y;
+	curColIdx = 0;
+}
+
+JPEG::DCTdataIterator::DCTdataIterator(JPEG *j) throw (NULLptr_fail) {
+	jpeg = j;
+	curBlkPtr = jpeg->DCTdata;
+	beginAddr = jpeg->DCTdata;
+	endAddr = jpeg->DCTdata + jpeg->DCTdataLength;
+
+	selfCheckNULL(__FILE__, __LINE__);
+	colorCount = 0;
+	curColor = _Y;
+	curColIdx = 0;
+}
+
+JPEG::DCTdataIterator::DCTdataIterator(const DCTdataIterator &it) throw (NULLptr_fail){
+	assert(it.curBlkPtr);
+
+	curBlkPtr = it.curBlkPtr;
+	assert(it.jpeg->DCTdataLength);
+	jpeg = it.jpeg;
+	beginAddr = jpeg->DCTdata;
+	endAddr = jpeg->DCTdata + jpeg->DCTdataLength;
+
+	selfCheckNULL(__FILE__, __LINE__);
+	curColor = it.curColor;
+	curColIdx = it.curColIdx;
+	colorCount = it.colorCount;
+}
+
+JPEG::DCTdataIterator::~DCTdataIterator() {
+	//			objectCount--;
+	curBlkPtr = NULL;
+	beginAddr = NULL;
+	endAddr = NULL;
+	curColor = 0;
+	curColIdx = 0;
+	colorCount = 0;
+}
+
+int JPEG::DCTdataIterator::color() {
+	return curColor;
+}
+
+bool JPEG::DCTdataIterator::lastBlock() throw (NULLptr_fail){
+	selfCheckNULL(__FILE__, __LINE__);
+	return curBlkPtr + BLK_LENGTH >= endAddr;
+}
+
+bool JPEG::DCTdataIterator::firstBlock() throw (NULLptr_fail){
+	selfCheckNULL(__FILE__, __LINE__);
+	return curBlkPtr - BLK_LENGTH < beginAddr;
+}
+
+JPEG::DCTdataIterator& JPEG::DCTdataIterator::begin()throw (NULLptr_fail){
+	selfCheckNULL(__FILE__, __LINE__);
+	curBlkPtr = jpeg->DCTdata;
+	curColor = _Y;
+	curColIdx = 0;
+	return *this;
+}
+
+JPEG::DCTdataIterator& JPEG::DCTdataIterator::end()throw (NULLptr_fail){
+	selfCheckNULL(__FILE__, __LINE__);
+	curBlkPtr = jpeg->DCTdata + jpeg->DCTdataLength;
+	curColor = _Y;
+	curColIdx = 0;
+
+	return *this;
+}
+
+JPEG::DCTdataIterator& JPEG::DCTdataIterator::mvToNextBlock() throw (indexing_fail) { // move current pointer to next block & return current pointer
+	selfCheckNULL(__FILE__, __LINE__);
+	if (lastBlock()/*curBlkPtr + BLK_LENGTH >= jpeg->DCTdata + jpeg->DCTdataLength*/) {
+		throw indexing_fail(__FILE__, __LINE__,
+				"DCTdataIterator::mvToNextBlock(): out of index range");
+	}
+	curBlkPtr += BLK_LENGTH;
+
+	if (curColIdx < jpeg->data.decimation[curColor] - 1)
+		curColIdx++;
+	else {
+		if (curColor < _CR) {
+			curColor++;
+			curColIdx = 0;
+		} else {
+			curColor = _Y;
+			curColIdx = 0;
+		}
+	}
+
+	return *this;
+}
+
+JPEG::DCTdataIterator& JPEG::DCTdataIterator::NextBlock() throw (indexing_fail) { // return pointer to next block (curBlkPtr does not change)
+	try {
+		return DCTdataIterator(*this).mvToNextBlock();
+	} catch (indexing_fail &exc) {
+		exc << str_info("From DCTdataIterator::NextBlock()");
+		throw exc;
+	}
+}
+
+JPEG::DCTdataIterator& JPEG::DCTdataIterator::mvToPrevBlock() throw (indexing_fail) { // move current pointer to previous block & return current pointer
+	if (firstBlock()/*curBlkPtr - BLK_LENGTH < jpeg->DCTdata*/) {
+		throw indexing_fail(__FILE__, __LINE__,
+				"DCTdataIterator::mvToNextBlock(): out of index range");
+	}
+	curBlkPtr -= BLK_LENGTH;
+	if (curColIdx > 0)
+		curColIdx--;
+	else {
+		if (curColor > _Y) {
+			curColor--;
+			curColIdx = jpeg->data.decimation[curColor] - 1;
+		} else {
+			curColor = _CR;
+			curColIdx = jpeg->data.decimation[curColor] - 1;
+		}
+	}
+
+	return *this;
+}
+
+JPEG::DCTdataIterator JPEG::DCTdataIterator::PrevBlock() throw (indexing_fail) { // return pointer to previous block (curBlkPtr does not change)
+	try {
+		return DCTdataIterator(*this).mvToPrevBlock();
+	} catch (indexing_fail &exc) {
+		exc << str_info("From DCTdataIterator::PrevBlock()");
+		throw exc;
+	}
+}
+
+INT16 JPEG::DCTdataIterator::getPrevDC() throw (indexing_fail) { // return DC coefficient from prev. block from curColor
+	try {
+		if (curBlkPtr == jpeg->DCTdata && curColIdx == 0) {
+			return 0;
+		} else if (curColor == _Y && curColIdx > 0) {
+			INT16 t = PrevBlock()[0];
+			return t;
+		} else if (curColor == _Y && curColIdx == 0) {
+			INT16 t = PrevBlock(). PrevBlock(). PrevBlock()[0];
+			return t;
+		} else if (curColor != _Y && curColIdx == 0) {
+			INT16 t = 0;
+			try {
+				//move to previous block group
+				t
+						= PrevBlock().PrevBlock(). PrevBlock().PrevBlock(). PrevBlock(). PrevBlock()[0];
+			} catch (indexing_fail) {
+				//				printf("\nFirst group\n");
+				return 0;
+			}
+			return t;
+		} else
+			return 0;
+	} catch (indexing_fail &exc) {
+		exc << str_info("From DCTdataIterator::getPrevDC()");
+		throw exc;
+	}
+}
+
+INT16* JPEG::DCTdataIterator::getCurBlock() {
+	return curBlkPtr;
+}
+
+INT16& JPEG::DCTdataIterator::operator[](long long idx) throw (indexing_fail) {
+	if (idx < 0 || idx >= 64) {
+		char str[256];
+		sprintf(str, "DCTdataIterator::operator[]( %lld ): out of index range", idx);
+		throw indexing_fail(__FILE__, __LINE__, str);
+	}
+	if (!curBlkPtr || (curBlkPtr + /*sizeof(INT16) * */idx >= endAddr/*jpeg->DCTdata
+			+ jpeg->DCTdataLength*/)) {
+		char str[256];
+		sprintf(str, "DCTdataIterator::operator[]( %lld ): out of index range:\n",
+				idx);
+		sprintf(
+				str,
+				"%s\t%d(tcurBlkPtr+idx) >= %d(endAddress)",
+				str, (int) (curBlkPtr + idx),
+				(int) (endAddr));
+		throw indexing_fail(__FILE__, __LINE__, str);
+	}
+	return curBlkPtr[idx];
+}
+
+INT16& JPEG::DCTdataIterator::LineView(int y, int x) { // Line indexing by 2d matrix view of DCT block
+	return curBlkPtr[y * 8 + x];
+}
+
+INT16& JPEG::DCTdataIterator::ZigZagView(int y, int x) { // ZigZag indexing by 2d matrix view of DCT block
+	return curBlkPtr[Natural_order2D[y][x]];
+}
+
+INT16& JPEG::DCTdataIterator::LineView(int x) { // Line indexing by vector view of DCT block
+	return curBlkPtr[x];
+}
+
+INT16& JPEG::DCTdataIterator::ZigZagView(int x) { // ZigZag indexing by vector view of DCT block
+	return curBlkPtr[Natural_order[x]];
+}
+
+void JPEG::DCTdataIterator::PrintData() throw (indexing_fail) {
+	printf(
+			"DCTdataIterator: data=[%p..%p], curBlkPtr=%p, Length=%d, curColIdx=%d\n",
+			jpeg->DCTdata, jpeg->DCTdata + jpeg->DCTdataLength, curBlkPtr,
+			jpeg->DCTdataLength, curColIdx);
+
+	DCTdataIterator it = *this;
+	int j = 0;
+	try {
+		it.mvToPrevBlock();
+	} catch (indexing_fail e) {
+		printf("Prev block does not exist\n");
+		j++;
+	}
+	for (; j < 3; j++) {
+		for (int i = 0; i < 64; i++) {
+			printf("%d ", it[i]);
+			fflush(stdout);
+		}
+		printf("\n");
+
+		if (j != 2)
+			try {
+				it.mvToNextBlock();
+			} catch (indexing_fail &e) {
+				printf("Next block does not exist\n");
+				return;
+			}
+	}
+}
+
+//INT16& JPEG::KZdataIterator::operator[](int idx) throw (indexing_fail) {
+//	if (idx < 0) {
+//		char str[256];
+//		sprintf(str, "KZdataIterator::operator[]( %d ): out of index", idx);
+//		throw indexing_fail(__FILE__, __LINE__, str);
+//	}
+//	if (idx >= 8) {
+//		idx = 7;
+//	}
+//	try {
+//
+//		return DCTdataIterator::operator[](KochZhaoZZ_order[idx]);
+//
+//	} catch (indexing_fail &exc) {
+//		exc << str_info("From KZdataIterator::operator[]");
+//		throw exc;
+//	}
+//}
+//
+//JPEG::KZdataIterator& JPEG::KZdataIterator::operator&(JPEG::KZdataIterator it) throw (indexing_fail) {
+//	*this = it;
+//	return *this;
+//}
+//
+

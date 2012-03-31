@@ -72,6 +72,11 @@
         if (demangled) free(demangled);\
     }
 
+#define TRY_CATCH_THROW(X_METHOD) try{X_METHOD;}catch(my_exception &exc)\
+		{ exc<<str_info("From ")<<str_info(__FILE__)<<str_info(":")\
+	<<int_info(__LINE__)<<str_info(" (")<<str_info(/*__FUNCTION__*/__PRETTY_FUNCTION__)<<\
+			str_info(")"); throw exc;}
+
 typedef boost::error_info<struct int_my_info, int> int_info;
 typedef boost::error_info<struct str_my_info, std::string> str_info;
 
@@ -101,6 +106,13 @@ public:
 	memory_fail(std::string str):my_exception(str){};
 	memory_fail(std::string file, int line, std::string str):my_exception(file, line, str){};
 	virtual ~memory_fail()throw(){};
+};
+
+struct NULLptr_fail: virtual my_exception {
+public:
+	NULLptr_fail(std::string str):my_exception(str){};
+	NULLptr_fail(std::string file, int line, std::string str):my_exception(file, line, str){};
+	virtual ~NULLptr_fail()throw(){};
 };
 
 struct indexing_fail: virtual my_exception {
