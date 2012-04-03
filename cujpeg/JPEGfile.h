@@ -318,6 +318,7 @@ public:
 		DCTdataIterator PrevBlock() throw (indexing_fail); // return pointer to previous block (curBlkPtr does not change)
 		INT16 getPrevDC() throw (indexing_fail); // return DC coefficient from prev. block from curColor
 		INT16* getCurBlock();
+		UINT8* getDecimation(){return decimation;}
 
 		INT16& operator[](long long idx) throw (indexing_fail);
 		bool operator>(const DCTdataIterator &it) const;
