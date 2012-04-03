@@ -320,7 +320,11 @@ public:
 		INT16* getCurBlock();
 
 		INT16& operator[](long long idx) throw (indexing_fail);
-		//INT16& operator[](long long idx) throw (indexing_fail);
+		bool operator>(const DCTdataIterator &it) const;
+		bool operator<(const DCTdataIterator &it) const;
+		bool operator>=(const DCTdataIterator &it) const;
+		bool operator<=(const DCTdataIterator &it) const;
+		bool operator==(const DCTdataIterator &it) const;
 
 		INT16& LineView(int y, int x); // Line indexing by 2d matrix view of DCT block
 		INT16& ZigZagView(int y, int x); // ZigZag indexing by 2d matrix view of DCT block
