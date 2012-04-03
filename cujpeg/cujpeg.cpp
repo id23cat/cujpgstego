@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
 			std::cout << "Not equal\n";
 			return 1;
 		}
-		jpeg.PrintData();
+//		jpeg.PrintData();
 		std::cout << "All is OK\n";
 
 //		KZdataIterator kzIterator(jpeg.DCTdata, jpeg.DCTdataLength);

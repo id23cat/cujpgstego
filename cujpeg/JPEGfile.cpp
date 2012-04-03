@@ -14,7 +14,7 @@
 //#define PRINT_DATA
 //#define PRINT_DCT_DECODE_PROCESS
 //#define PRINT_TREE
-#define PRINT_CMP_PROCESS
+//#define PRINT_CMP_PROCESS
 
 #define base0(ID) (ID-1)
 
