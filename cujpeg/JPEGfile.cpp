@@ -602,7 +602,7 @@ bool JPEG::cmpWith(char *fname) throw (memory_fail) {
 		curptr += BLK_LENGTH;
 	}
 	JPEG::DCTdataIterator it1(this)/*(DCTdata, DCTdataLength, data.decimation)*/;
-	JPEG::DCTdataIterator it2(this)/*(cdat, DCTdataLength, data.decimation)*/;
+	JPEG::DCTdataIterator it2(cdat, DCTdataLength, data.decimation)/*(cdat, DCTdataLength, data.decimation)*/;
 	int ret = 0;
 
 	int r = 0;
@@ -658,7 +658,7 @@ bool JPEG::cmpWith(char *fname) throw (memory_fail) {
 void JPEG::PrintData(/*class DCTdataIterator &d,*/int count) {
 	//	class DCTdataIterator t = d;
 	if(count == 0)
-		count = DCTdataLength-1;
+		count = DCTdataLength/64-1;
 	for (int i = 0; i < count; i++) {
 		for (int j = 0; j < 64; j++) {
 			printf("%d ", DCTdata[i * 64 + j]/*, t[j]*/);
