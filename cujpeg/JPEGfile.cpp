@@ -668,16 +668,17 @@ void JPEG::PrintData(/*class DCTdataIterator &d,*/int count) {
 }
 
 void JPEG::DCTdataIterator::selfCheckNULL(std::string file, int line) throw (NULLptr_fail){
-	if(jpeg == NULL || jpeg->DCTdata == NULL)
+	if(beginAddr == NULL || decimation == NULL || endAddr == NULL)
 		throw NULLptr_fail(file, line,
 						"DCTdataIterator(JPEG *j): obtained a null pointer");
 }
 
 JPEG::DCTdataIterator::DCTdataIterator(){
-	jpeg = NULL;
-	curBlkPtr = NULL;
 	beginAddr = NULL;
 	endAddr = NULL;
+	dataLength = 0;
+	decimation = NULL;
+	curBlkPtr = NULL;
 
 	colorCount = 0;
 	curColor = _Y;
@@ -685,10 +686,11 @@ JPEG::DCTdataIterator::DCTdataIterator(){
 }
 
 JPEG::DCTdataIterator::DCTdataIterator(JPEG *j) throw (NULLptr_fail) {
-	jpeg = j;
-	curBlkPtr = jpeg->DCTdata;
-	beginAddr = jpeg->DCTdata;
-	endAddr = jpeg->DCTdata + jpeg->DCTdataLength;
+	beginAddr = j->DCTdata;
+	endAddr = j->DCTdata + j->DCTdataLength;
+	dataLength = j->DCTdataLength;
+	decimation = j->data.decimation;
+	curBlkPtr = j->DCTdata;
 
 	selfCheckNULL(__FILE__, __LINE__);
 	colorCount = 0;
@@ -700,8 +702,8 @@ JPEG::DCTdataIterator::DCTdataIterator(INT16* data, size_t dLength, UINT8 decim[
 	beginAddr = data;
 	endAddr = beginAddr + dLength;
 	dataLength = dLength;
-	curBlkPtr = jpeg->DCTdata;
-	beginAddr = jpeg->DCTdata;
+	decimation = decim;
+	curBlkPtr = beginAddr;
 
 	selfCheckNULL(__FILE__, __LINE__);
 	colorCount = 0;
@@ -713,10 +715,10 @@ JPEG::DCTdataIterator::DCTdataIterator(const DCTdataIterator &it) throw (NULLptr
 	assert(it.curBlkPtr);
 
 	curBlkPtr = it.curBlkPtr;
-	assert(it.jpeg->DCTdataLength);
-	jpeg = it.jpeg;
-	beginAddr = jpeg->DCTdata;
-	endAddr = jpeg->DCTdata + jpeg->DCTdataLength;
+	beginAddr = it.beginAddr;
+	endAddr = it.endAddr;
+	dataLength = it.dataLength;
+	decimation = it.decimation;
 
 	selfCheckNULL(__FILE__, __LINE__);
 	curColor = it.curColor;
@@ -750,7 +752,7 @@ bool JPEG::DCTdataIterator::firstBlock() throw (NULLptr_fail){
 
 JPEG::DCTdataIterator& JPEG::DCTdataIterator::begin()throw (NULLptr_fail){
 	selfCheckNULL(__FILE__, __LINE__);
-	curBlkPtr = jpeg->DCTdata;
+	curBlkPtr = beginAddr;
 	curColor = _Y;
 	curColIdx = 0;
 	return *this;
@@ -758,7 +760,7 @@ JPEG::DCTdataIterator& JPEG::DCTdataIterator::begin()throw (NULLptr_fail){
 
 JPEG::DCTdataIterator& JPEG::DCTdataIterator::end()throw (NULLptr_fail){
 	selfCheckNULL(__FILE__, __LINE__);
-	curBlkPtr = jpeg->DCTdata + jpeg->DCTdataLength;
+	curBlkPtr = endAddr;
 	curColor = _Y;
 	curColIdx = 0;
 
@@ -773,7 +775,7 @@ JPEG::DCTdataIterator& JPEG::DCTdataIterator::mvToNextBlock() throw (indexing_fa
 	}
 	curBlkPtr += BLK_LENGTH;
 
-	if (curColIdx < jpeg->data.decimation[curColor] - 1)
+	if (curColIdx < decimation[curColor] - 1)
 		curColIdx++;
 	else {
 		if (curColor < _CR) {
@@ -808,10 +810,10 @@ JPEG::DCTdataIterator& JPEG::DCTdataIterator::mvToPrevBlock() throw (indexing_fa
 	else {
 		if (curColor > _Y) {
 			curColor--;
-			curColIdx = jpeg->data.decimation[curColor] - 1;
+			curColIdx = decimation[curColor] - 1;
 		} else {
 			curColor = _CR;
-			curColIdx = jpeg->data.decimation[curColor] - 1;
+			curColIdx = decimation[curColor] - 1;
 		}
 	}
 
@@ -829,7 +831,7 @@ JPEG::DCTdataIterator JPEG::DCTdataIterator::PrevBlock() throw (indexing_fail) {
 
 INT16 JPEG::DCTdataIterator::getPrevDC() throw (indexing_fail) { // return DC coefficient from prev. block from curColor
 	try {
-		if (curBlkPtr == jpeg->DCTdata && curColIdx == 0) {
+		if (curBlkPtr == beginAddr && curColIdx == 0) {
 			return 0;
 		} else if (curColor == _Y && curColIdx > 0) {
 			INT16 t = PrevBlock()[0];
@@ -900,8 +902,8 @@ INT16& JPEG::DCTdataIterator::ZigZagView(int x) { // ZigZag indexing by vector v
 void JPEG::DCTdataIterator::PrintData() throw (indexing_fail) {
 	printf(
 			"DCTdataIterator: data=[%p..%p], curBlkPtr=%p, Length=%d, curColIdx=%d\n",
-			jpeg->DCTdata, jpeg->DCTdata + jpeg->DCTdataLength, curBlkPtr,
-			jpeg->DCTdataLength, curColIdx);
+			beginAddr, endAddr, curBlkPtr,
+			dataLength, curColIdx);
 
 	DCTdataIterator it = *this;
 	int j = 0;
