@@ -19,6 +19,10 @@ KZanalizer::KZanalizer(JPEG::DCTdataIterator &begin, JPEG::DCTdataIterator &end)
 	dctLen = blkcount * 8;
 	SAFE_MALLOC_INT16(dctPtr, dctLen);
 
+	JPEG::DCTdataIterator it = begin;
+	while(it < end){
+
+	}
 }
 
 KZanalizer::KZanalizer(INT16 *d, size_t dl){
@@ -28,4 +32,30 @@ KZanalizer::KZanalizer(INT16 *d, size_t dl){
 }
 
 KZanalizer::~KZanalizer() {
+	free(dctPtr);
+}
+
+
+INT16& KZanalizer::KZdataIterator::operator[](int idx) throw (indexing_fail) {
+	if (idx < 0) {
+		char str[256];
+		sprintf(str, "KZdataIterator::operator[]( %d ): out of index", idx);
+		throw indexing_fail(__FILE__, __LINE__, str);
+	}
+	if (idx >= 8) {
+		idx = 7;
+	}
+	try {
+
+		return DCTdataIterator::operator[](KochZhaoZZ_order[idx]);
+
+	} catch (indexing_fail &exc) {
+		exc << str_info("From KZdataIterator::operator[]");
+		throw exc;
+	}
+}
+
+KZanalizer::KZdataIterator& KZanalizer::KZdataIterator::operator&(KZanalizer::KZdataIterator it) throw (indexing_fail) {
+	*this = it;
+	return *this;
 }
