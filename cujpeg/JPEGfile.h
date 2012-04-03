@@ -285,6 +285,7 @@ public:
 		INT16* endAddr;
 		size_t dataLength; 	// in DCT coefficients
 		UINT8* decimation;	// decimation table
+		UINT8 blkSize;
 
 		//		static int objectCount;
 		//	static DCTdataIterator *IteratorObjects;

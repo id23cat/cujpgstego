@@ -599,8 +599,8 @@ bool JPEG::cmpWith(char *fname) throw (memory_fail) {
 	INT16 t = 0;
 	while (!cFile.feof()) {
 		cFile.Read(&t, 2, 1);
-		cFile.Read(curptr, sizeof(INT16), BLK_LENGTH);
-		curptr += BLK_LENGTH;
+		cFile.Read(curptr, sizeof(INT16), blkSize);
+		curptr += blkSize;
 	}
 	JPEG::DCTdataIterator it1(this)/*(DCTdata, DCTdataLength, data.decimation)*/;
 	JPEG::DCTdataIterator it2(cdat, DCTdataLength, data.decimation)/*(cdat, DCTdataLength, data.decimation)*/;
@@ -683,6 +683,7 @@ JPEG::DCTdataIterator::DCTdataIterator() {
 	dataLength = 0;
 	decimation = NULL;
 	curBlkPtr = NULL;
+	blkSize = BLK_LENGTH;
 
 	colorCount = 0;
 	curColor = _Y;
@@ -695,6 +696,7 @@ JPEG::DCTdataIterator::DCTdataIterator(JPEG *j) throw (NULLptr_fail) {
 	dataLength = j->DCTdataLength;
 	decimation = j->data.decimation;
 	curBlkPtr = j->DCTdata;
+	blkSize = BLK_LENGTH;
 
 	selfCheckNULL(__FILE__, __LINE__);
 	colorCount = 0;
@@ -709,6 +711,7 @@ JPEG::DCTdataIterator::DCTdataIterator(INT16* data, size_t dLength,
 	dataLength = dLength;
 	decimation = decim;
 	curBlkPtr = beginAddr;
+	blkSize = BLK_LENGTH;
 
 	selfCheckNULL(__FILE__, __LINE__);
 	colorCount = 0;
@@ -725,6 +728,7 @@ JPEG::DCTdataIterator::DCTdataIterator(const DCTdataIterator &it)
 	endAddr = it.endAddr;
 	dataLength = it.dataLength;
 	decimation = it.decimation;
+	blkSize = it.blkSize;
 
 	selfCheckNULL(__FILE__, __LINE__);
 	curColor = it.curColor;
@@ -748,12 +752,12 @@ int JPEG::DCTdataIterator::color() {
 
 bool JPEG::DCTdataIterator::lastBlock() throw (NULLptr_fail) {
 	selfCheckNULL(__FILE__, __LINE__);
-	return curBlkPtr + BLK_LENGTH >= endAddr;
+	return curBlkPtr + blkSize >= endAddr;
 }
 
 bool JPEG::DCTdataIterator::firstBlock() throw (NULLptr_fail) {
 	selfCheckNULL(__FILE__, __LINE__);
-	return curBlkPtr - BLK_LENGTH < beginAddr;
+	return curBlkPtr - blkSize < beginAddr;
 }
 
 JPEG::DCTdataIterator& JPEG::DCTdataIterator::begin() throw (NULLptr_fail) {
@@ -776,11 +780,11 @@ JPEG::DCTdataIterator& JPEG::DCTdataIterator::end() throw (NULLptr_fail) {
 JPEG::DCTdataIterator& JPEG::DCTdataIterator::mvToNextBlock()
 		throw (indexing_fail) { // move current pointer to next block & return current pointer
 	selfCheckNULL(__FILE__, __LINE__);
-	if (lastBlock()/*curBlkPtr + BLK_LENGTH >= jpeg->DCTdata + jpeg->DCTdataLength*/) {
+	if (lastBlock()/*curBlkPtr + blkSize >= jpeg->DCTdata + jpeg->DCTdataLength*/) {
 		throw indexing_fail(__FILE__, __LINE__,
 				"DCTdataIterator::mvToNextBlock(): out of index range");
 	}
-	curBlkPtr += BLK_LENGTH;
+	curBlkPtr += blkSize;
 
 	if (curColIdx < decimation[curColor] - 1)
 		curColIdx++;
@@ -808,11 +812,11 @@ JPEG::DCTdataIterator& JPEG::DCTdataIterator::NextBlock() throw (indexing_fail) 
 
 JPEG::DCTdataIterator& JPEG::DCTdataIterator::mvToPrevBlock()
 		throw (indexing_fail) { // move current pointer to previous block & return current pointer
-	if (firstBlock()/*curBlkPtr - BLK_LENGTH < jpeg->DCTdata*/) {
+	if (firstBlock()/*curBlkPtr - blkSize < jpeg->DCTdata*/) {
 		throw indexing_fail(__FILE__, __LINE__,
 				"DCTdataIterator::mvToNextBlock(): out of index range");
 	}
-	curBlkPtr -= BLK_LENGTH;
+	curBlkPtr -= blkSize;
 	if (curColIdx > 0)
 		curColIdx--;
 	else {
