@@ -696,6 +696,19 @@ JPEG::DCTdataIterator::DCTdataIterator(JPEG *j) throw (NULLptr_fail) {
 	curColIdx = 0;
 }
 
+JPEG::DCTdataIterator::DCTdataIterator(INT16* data, size_t dLength, UINT8 decim[3]) throw (NULLptr_fail) {
+	beginAddr = data;
+	endAddr = beginAddr + dLength;
+	dataLength = dLength;
+	curBlkPtr = jpeg->DCTdata;
+	beginAddr = jpeg->DCTdata;
+
+	selfCheckNULL(__FILE__, __LINE__);
+	colorCount = 0;
+	curColor = _Y;
+	curColIdx = 0;
+}
+
 JPEG::DCTdataIterator::DCTdataIterator(const DCTdataIterator &it) throw (NULLptr_fail){
 	assert(it.curBlkPtr);
 

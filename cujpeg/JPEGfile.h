@@ -280,9 +280,12 @@ private:
 	int parseJpeg();		// read jpeg sections and put data to respective structures
 public:
 	class DCTdataIterator /*:public JustVector<INT16>*/{
-		JPEG *jpeg;
+		//JPEG *jpeg;
 		INT16* beginAddr;
 		INT16* endAddr;
+		size_t dataLength; 	// in DCT coefficients
+		UINT8* decimation;	// decimation table
+
 		//		static int objectCount;
 		//	static DCTdataIterator *IteratorObjects;
 
@@ -298,6 +301,7 @@ public:
 	public:
 		DCTdataIterator();
 		DCTdataIterator(JPEG *j)throw (NULLptr_fail);
+		DCTdataIterator(INT16* data, size_t dLength, UINT8 decim[3])throw (NULLptr_fail);
 		DCTdataIterator(const DCTdataIterator &it)throw (NULLptr_fail);
 		virtual ~DCTdataIterator();
 
