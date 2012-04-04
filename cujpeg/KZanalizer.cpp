@@ -19,9 +19,14 @@ KZanalizer::KZanalizer(JPEG::DCTdataIterator &begin, JPEG::DCTdataIterator &end)
 	dctLen = blkcount * 8;
 	SAFE_MALLOC_INT16(dctPtr, dctLen);
 
+	KZdataIterator kzit(dctPtr, dctLen, begin.getDecimation());
 	JPEG::DCTdataIterator it = begin;
-	while(it < end){
 
+	while(it < end){
+		for(int i=0; i<8; i++)
+			kzit[i] = it[KochZhaoZZ_order[i]];
+		kzit.mvToNextBlock();
+		it.mvToNextBlock();
 	}
 }
 
@@ -36,26 +41,26 @@ KZanalizer::~KZanalizer() {
 }
 
 
-INT16& KZanalizer::KZdataIterator::operator[](int idx) throw (indexing_fail) {
-	if (idx < 0) {
-		char str[256];
-		sprintf(str, "KZdataIterator::operator[]( %d ): out of index", idx);
-		throw indexing_fail(__FILE__, __LINE__, str);
-	}
-	if (idx >= 8) {
-		idx = 7;
-	}
-	try {
+//INT16& KZanalizer::KZdataIterator::operator[](int idx) throw (indexing_fail) {
+//	if (idx < 0) {
+//		char str[256];
+//		sprintf(str, "KZdataIterator::operator[]( %d ): out of index", idx);
+//		throw indexing_fail(__FILE__, __LINE__, str);
+//	}
+//	if (idx >= 8) {
+//		idx = 7;
+//	}
+//	try {
+//
+//		return JPEG::DCTdataIterator::operator[](KochZhaoZZ_order[idx]);
+//
+//	} catch (indexing_fail &exc) {
+//		exc << str_info("From KZdataIterator::operator[]");
+//		throw exc;
+//	}
+//}
 
-		return DCTdataIterator::operator[](KochZhaoZZ_order[idx]);
-
-	} catch (indexing_fail &exc) {
-		exc << str_info("From KZdataIterator::operator[]");
-		throw exc;
-	}
-}
-
-KZanalizer::KZdataIterator& KZanalizer::KZdataIterator::operator&(KZanalizer::KZdataIterator it) throw (indexing_fail) {
-	*this = it;
-	return *this;
-}
+//KZanalizer::KZdataIterator& KZanalizer::KZdataIterator::operator&(KZanalizer::KZdataIterator it) throw (indexing_fail) {
+//	*this = it;
+//	return *this;
+//}
