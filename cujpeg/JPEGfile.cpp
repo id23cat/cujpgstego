@@ -599,8 +599,8 @@ bool JPEG::cmpWith(char *fname) throw (memory_fail) {
 	INT16 t = 0;
 	while (!cFile.feof()) {
 		cFile.Read(&t, 2, 1);
-		cFile.Read(curptr, sizeof(INT16), blkSize);
-		curptr += blkSize;
+		cFile.Read(curptr, sizeof(INT16), BLK_LENGTH);
+		curptr += BLK_LENGTH;
 	}
 	JPEG::DCTdataIterator it1(this)/*(DCTdata, DCTdataLength, data.decimation)*/;
 	JPEG::DCTdataIterator it2(cdat, DCTdataLength, data.decimation)/*(cdat, DCTdataLength, data.decimation)*/;
@@ -944,7 +944,7 @@ void JPEG::DCTdataIterator::PrintData() throw (indexing_fail) {
 		j++;
 	}
 	for (; j < 3; j++) {
-		for (int i = 0; i < 64; i++) {
+		for (int i = 0; i < blkSize; i++) {
 			printf("%d ", it[i]);
 			fflush(stdout);
 		}
@@ -957,6 +957,14 @@ void JPEG::DCTdataIterator::PrintData() throw (indexing_fail) {
 				printf("Next block does not exist\n");
 				return;
 			}
+	}
+}
+
+void JPEG::DCTdataIterator::PrintBlock() throw (indexing_fail) {
+	for(int i=0; i<blkSize/8; i++){
+		for(int j=0; j<8; j++)
+			printf("%d ", (*this)[i*8+j]);
+		printf("\n");
 	}
 }
 
