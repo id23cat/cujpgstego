@@ -13,13 +13,14 @@
 #define KZ_BLK_LENGTH 8
 
 
+
 class KZanalizer {
 	INT16 *dctPtr;
 	size_t dctLen;
 public:
 	KZanalizer(): dctPtr(NULL), dctLen(0){};
-	KZanalizer(JPEG::DCTdataIterator &begin, JPEG::DCTdataIterator &end);	// take iterators
-	KZanalizer(INT16 *d, size_t dl);				// take pointer to DCT sequence & count
+	KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end);	// take iterators
+	KZanalizer(INT16 *data, size_t datalen);				// take pointer to DCT sequence & count
 	virtual ~KZanalizer();
 
 	class KZdataIterator: public JPEG::DCTdataIterator {

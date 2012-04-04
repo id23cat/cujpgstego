@@ -6,6 +6,7 @@
  */
 //#include <stdio.h>
 #include "JPEGfile.h"
+#include "KZanalizer.h"
 //#define FNAME "g.jpg"
 //#include "histogramtest.hpp"
 //#define FNAME "005.jpg"
@@ -28,7 +29,7 @@ int main(int argc, char **argv) {
 //		jpeg.PrintData();
 		std::cout << "All is OK\n";
 
-//		KZdataIterator kzIterator(jpeg.DCTdata, jpeg.DCTdataLength);
+		KZanalizer kz(jpeg.begin(), jpeg.end());
 
 	} catch (my_exception exc) {
 		std::cerr << exc.what() << std::endl;
