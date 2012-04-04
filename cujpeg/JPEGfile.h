@@ -363,6 +363,13 @@ public:
 
 	void GetDCTs()throw(memory_fail);				// decode DCT coefficients to DCTdata
 	bool cmpWith(char *fname)throw(memory_fail);	// compare DCTs with existing log file
+	DCTdataIterator begin(){
+		return DCTdataIterator(this);
+	};
+
+	DCTdataIterator end(){
+		return DCTdataIterator(this).end();
+	};
 //	KZdataIterator<INT16> getKZIterator();			// create iterator for a DCT structures
 //	KZdataIterator begin(){
 //		return KZdataIterator(this);
