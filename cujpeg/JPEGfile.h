@@ -285,6 +285,7 @@ public:
 		INT16* endAddr;
 		size_t dataLength; 	// in DCT coefficients
 		UINT8* decimation;	// decimation table
+	protected:
 		UINT8 blkSize;
 
 		//		static int objectCount;
@@ -334,6 +335,7 @@ public:
 		INT16& ZigZagView(int x); // ZigZag indexing by vector view of DCT block
 
 		void PrintData() throw (indexing_fail);
+		void PrintBlock() throw (indexing_fail);
 	};
 
 //	class KZdataIterator: public DCTdataIterator {
