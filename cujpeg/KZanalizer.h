@@ -15,11 +15,12 @@
 
 
 class KZanalizer {
-	INT16 *dctPtr;
-	size_t dctLen;
+	INT16 *dctPtr;				// coefficients pointer
+	size_t dctLen;				// elements count
+	UINT8 colorComponent;			// color component (_Y, _CB, _CR, _ALL)
 public:
 	KZanalizer(): dctPtr(NULL), dctLen(0){};
-	KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end);	// take iterators
+	KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 component=_ALL);	// take iterators
 	KZanalizer(INT16 *data, size_t datalen);				// take pointer to DCT sequence & count
 	virtual ~KZanalizer();
 

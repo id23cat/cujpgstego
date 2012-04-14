@@ -30,6 +30,7 @@ typedef unsigned int UINT32;
 #define _Y 0
 #define _CB 1
 #define _CR 2
+#define _ALL 0xFF
 
 
 static const UINT8 ZigZag_order2D[8][8] = { { 0, 1, 5, 6, 14, 15, 27, 28 }, {

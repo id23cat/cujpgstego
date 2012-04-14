@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
 //		jpeg.PrintData();
 		std::cout << "All is OK\n";
 
-		KZanalizer kz(jpeg.begin(), jpeg.end());
+		KZanalizer kz(jpeg.begin(), jpeg.end(), _CB);
 
 	} catch (my_exception exc) {
 		std::cerr << exc.what() << std::endl;
