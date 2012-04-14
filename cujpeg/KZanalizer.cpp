@@ -66,6 +66,6 @@ KZanalizer::KZanalizer(INT16 *data, size_t datalen){
 }
 
 KZanalizer::~KZanalizer() {
-	free(dctPtr);
+	SAFE_FREE(dctPtr);
 }
 
