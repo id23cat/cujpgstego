@@ -48,20 +48,17 @@ int SOF0::memmv1bLeft(UINT8 *start, int len) {
 	return len;
 }
 JPEG::~JPEG() {
-	if (comment.str)
-		free(comment.str);
+	SAFE_FREE(comment.str);
 
 	for (int i = 0; i < 2; i++)
-		for (int j = 0; j < 2; j++)
-			if (hTable[i][j].code && hTable[i][j].mcodeslength) {
-				free(hTable[i][j].code);
-				hTable[i][j].mcodeslength = 0;
-			}
+		for (int j = 0; j < 2; j++){
+			SAFE_FREE(hTable[i][j].code);
+			hTable[i][j].mcodeslength = 0;
+		}
 
-	if (data.srcDataPtr)
-		free(data.srcDataPtr);
-	if (DCTdata)
-		free(DCTdata);
+
+	SAFE_FREE(data.srcDataPtr);
+	SAFE_FREE(DCTdata);
 }
 
 JPEG::JPEG(char *jfname) {
@@ -648,7 +645,7 @@ bool JPEG::cmpWith(char *fname) throw (memory_fail) {
 		if (!it2.lastBlock())
 			it2.mvToNextBlock();
 	}
-	free(cdat);
+	SAFE_FREE(cdat);
 	if (ret)
 		return false;
 	return true;

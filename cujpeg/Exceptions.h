@@ -54,6 +54,8 @@
 			sprintf(str, "malloc(%d) -- failed", count * sizeof(char));\
 			throw memory_fail(__FILE__, __LINE__, str);}
 
+#define SAFE_FREE(ptr) if(ptr) free(ptr);
+
 #define CALL_STACK(strmes)using namespace abi;\
     enum{ MAX_DEPTH = 10 };\
     void *trace[MAX_DEPTH];\
