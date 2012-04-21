@@ -6,6 +6,7 @@
  */
 
 #include "KZanalizer.h"
+#include <vector>
 
 KZanalizer::KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 comp) {
 	colorComponent = comp;
@@ -79,11 +80,10 @@ bool KZanalizer::Analize(){
 		printf("std = %f\n",stdArray[i-1]);
 		it.mvToNextBlock();
 	}
-	HIST hist;
-	hist_alloc(&hist, stdArray, 0.05f, 0.0001f, 3.f);
+	std::vector<HIST> hist;
+	build_hist(hist, stdArray, 0.05f, 0.0001f, 3.f);
+
 	SAFE_FREE(stdArray);
-	SAFE_FREE(hist.count);
-	SAFE_FREE(hist.value);
 }
 
 float KZanalizer::KZdataIterator::Mean(){
@@ -104,20 +104,18 @@ float KZanalizer::KZdataIterator::SqrDeviation(){
 	return sqrt(dev/(float)(DCTdataIterator::blkSize-1));
 }
 
-void KZanalizer::hist_alloc(HIST *hst, float *data, VALUETYPE begin, VALUETYPE dist, VALUETYPE end){
+void KZanalizer::build_hist(std::vector<HIST> &hist, float *data, VALUETYPE begin, VALUETYPE dist, VALUETYPE end){
+
 	VALUETYPE k = 1/dist;
 	UINT16 x0 = begin * k;
-	UINT16 x1 = end * k;
 	UINT16 z = 0;
 
-	hst->length = x1 - x0 + 1;
-	SAFE_MALLOC(hst->count, hst->length, INT16);
-	SAFE_MALLOC(hst->value, hst->length, VALUETYPE);
-//	memset(hst->value, 0, hst->length * sizeof(VALUETYPE));
+	HIST h;
 
-	VALUETYPE j = begin;
-	for(UINT16 i=0; i<hst->length && j<=end; i++, j+=dist){
-		hst->value[i] = j;
+	for(VALUETYPE j = begin; /*i<hist->length && */j<=end; j+=dist){
+		h.value = j;
+		h.count = 0;
+		hist.push_back(h);
 //		printf("%.5f ", j);
 	}
 	printf("\n");
@@ -126,6 +124,7 @@ void KZanalizer::hist_alloc(HIST *hst, float *data, VALUETYPE begin, VALUETYPE d
 	for(size_t i=0; i<blockCount; i++){
 		if(data[i] < begin || data[i] > end) continue;
 		z = data[i] * k - x0;
-		printf("%f v[%d]=%f\n",hst->value[z], z, data[i]);
+		hist[z].count++;
+		printf("%f v[%d]=%f, count=%d\n",hist[z].value, z, data[i], hist[z].count);
 	}
 }

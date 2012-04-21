@@ -37,15 +37,9 @@ static UINT8 defaultDecimation[3] = DEFAULT_DECIMATION;
 //};
 
 typedef struct HISTOGRAM{
-	INT16 *count;
-	VALUETYPE *value;
-	size_t length;
-
-//	struct HISTOGRAM_ITERATOR begin(){return HISTOGRAM_ITERATOR(*this);};
-//	HISTOGRAM_ITERATOR end(){return HISTOGRAM_ITERATOR(*this).last();};
+	INT16 count;
+	VALUETYPE value;
 } HIST;
-
-
 
 
 class KZanalizer {
@@ -54,7 +48,7 @@ class KZanalizer {
 	size_t blockCount;
 	UINT8 colorComponent;			// color component (_Y, _CB, _CR, _ALL)
 private:
-	void hist_alloc(HIST *hst, float *data, VALUETYPE begin=0.05f, VALUETYPE dist=0.0001f, VALUETYPE end=3.f);
+	void build_hist(std::vector<HIST> &hist, float *data, VALUETYPE begin=0.05f, VALUETYPE dist=0.0001f, VALUETYPE end=3.f);
 public:
 	KZanalizer(): dctPtr(NULL), dctLen(0){};
 	KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 component=_ALL);	// take iterators
