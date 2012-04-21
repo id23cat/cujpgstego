@@ -13,7 +13,7 @@
 
 //#define PRINT_DATA
 //#define PRINT_DCT_DECODE_PROCESS
-#define PRINT_DCT_BLOCK
+//#define PRINT_DCT_BLOCK
 //#define PRINT_TREE
 //#define PRINT_CMP_PROCESS
 

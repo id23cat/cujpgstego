@@ -10,11 +10,11 @@
 //#define FNAME "g.jpg"
 //#include "histogramtest.hpp"
 //#define FNAME "005.jpg"
-//#define FNAME "106.jpg"
-#define FNAME "11-out.jpg"
+#define FNAME "106.jpg"
+//#define FNAME "11-out.jpg"
 
-//#define LOG "106.log"
-#define LOG "11-out.log"
+#define LOG "106.log"
+//#define LOG "11-out.log"
 
 
 int main(int argc, char **argv) {
@@ -22,14 +22,15 @@ int main(int argc, char **argv) {
 		JPEG jpeg((char*) FNAME); // create jpeg object for a file
 		jpeg.GetDCTs(); // get DCT coefficients from file
 		std::cout << "Read is OK\n";
-		if (!jpeg.cmpWith((char*) LOG)) { // compare DCTs with existing
-			std::cout << "Not equal\n";
-			return 1;
-		}
+//		if (!jpeg.cmpWith((char*) LOG)) { // compare DCTs with existing
+//			std::cout << "Not equal\n";
+//			return 1;
+//		}
 //		jpeg.PrintData();
-		std::cout << "All is OK\n";
+//		std::cout << "All is OK\n";
 
 		KZanalizer kz(jpeg.begin(), jpeg.end(), _CB);
+		kz.Analize();
 
 	} catch (my_exception exc) {
 		std::cerr << exc.what() << std::endl;
