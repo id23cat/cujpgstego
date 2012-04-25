@@ -18,44 +18,36 @@ static UINT8 defaultDecimation[3] = DEFAULT_DECIMATION;
 #endif
 
 #define VALUETYPE float
-
-//struct HISTOGRAM_ITERATOR;
-//typedef HISTOGRAM_ITERATOR HISTIT;
-
-//struct HISTOGRAM;
-//
-//struct HISTOGRAM_ITERATOR{
-//	HISTOGRAM hist;
-//		size_t cind;
-//		size_t valind;
-//public:
-//	HISTOGRAM_ITERATOR(HIST &hst): hist(hst), cind(0), valind(0){};
-//
-//	HISTOGRAM_ITERATOR first(){cind = 0; valind = 0; return *this;};
-//	HISTOGRAM_ITERATOR last(){cind = hist.length-1; valind = hist.length-1; return *this;};
-//
-//};
+#define SIGMA 0.354f
 
 typedef struct HISTOGRAM{
 	INT16 count;
 	VALUETYPE value;
 } HIST;
 
+struct Compare {
+	bool operator()(HIST h1, HIST h2){
+		return h1.count < h2.count;
+	}
+};
 
 class KZanalizer {
+
 	INT16 *dctPtr;				// coefficients pointer
 	size_t dctLen;				// elements count
 	size_t blockCount;
-	UINT8 colorComponent;			// color component (_Y, _CB, _CR, _ALL)
+	UINT8 colorComponent;		// color component (_Y, _CB, _CR, _ALL)
+	VALUETYPE probability;			// probability of stego
 private:
-	void build_hist(std::vector<HIST> &hist, float *data, VALUETYPE begin=0.05f, VALUETYPE dist=0.0001f, VALUETYPE end=3.f);
+	size_t build_hist(std::vector<HIST> &hist, float *data, VALUETYPE begin=0.05f, VALUETYPE dist=0.0001f, VALUETYPE end=3.f);
 public:
 	KZanalizer(): dctPtr(NULL), dctLen(0){};
 	KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 component=_ALL);	// take iterators
 	KZanalizer(INT16 *data, size_t datalen);				// take pointer to DCT sequence & count
 	virtual ~KZanalizer();
 
-	bool Analize();
+	bool Analize(int Pthreshold = 70);		// threshold for P-value
+	VALUETYPE GetProbability() {return probability;};
 
 	class KZdataIterator: public JPEG::DCTdataIterator {
 	public:
@@ -88,5 +80,6 @@ public:
 //		KZdataIterator& operator&(KZdataIterator it) throw (indexing_fail);
 	};
 };
+
 
 #endif /* KZANALIZER_H_ */

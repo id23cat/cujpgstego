@@ -10,10 +10,12 @@
 //#define FNAME "g.jpg"
 //#include "histogramtest.hpp"
 //#define FNAME "005.jpg"
-#define FNAME "106.jpg"
+//#define FNAME "106.jpg"
 //#define FNAME "11-out.jpg"
+//#define FNAME "106-100-2-A-0.jpg"
+#define FNAME "106-100-1-A-0.jpg"
 
-#define LOG "106.log"
+//#define LOG "106.log"
 //#define LOG "11-out.log"
 
 
@@ -30,7 +32,10 @@ int main(int argc, char **argv) {
 //		std::cout << "All is OK\n";
 
 		KZanalizer kz(jpeg.begin(), jpeg.end(), _CB);
-		kz.Analize();
+		if(kz.Analize())
+			printf("this is stego: %.3f\%\n", kz.GetProbability());
+		else
+			printf("this is not stego: %.3f\%\n", kz.GetProbability());
 
 	} catch (my_exception exc) {
 		std::cerr << exc.what() << std::endl;
