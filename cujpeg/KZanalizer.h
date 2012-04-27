@@ -46,8 +46,16 @@ public:
 	KZanalizer(INT16 *data, size_t datalen);				// take pointer to DCT sequence & count
 	virtual ~KZanalizer();
 
-	bool Analize(int Pthreshold = 70);		// threshold for P-value
+	// Analize:
+	// true -- contain stego
+	// false -- clean image
+	bool Analize(int Pthreshold = 70);		// Pthreshold -- threshold for P-value
+
+	// call after Analize -- return result probability
 	VALUETYPE GetProbability() {return probability;};
+
+	// return pointer to dctPtr -- vector of Koch-Zhao 8/block coefficient;
+	INT16 *Get8DCTsPointer() {return dctPtr;};
 
 	class KZdataIterator: public JPEG::DCTdataIterator {
 	public:

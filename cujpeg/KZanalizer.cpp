@@ -7,6 +7,7 @@
 
 #include "KZanalizer.h"
 #include <vector>
+#include <math.h>
 #include <algorithm>
 
 KZanalizer::KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 comp) {

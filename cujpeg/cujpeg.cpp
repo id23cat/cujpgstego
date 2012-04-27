@@ -21,7 +21,8 @@
 
 int main(int argc, char **argv) {
 	try {
-		JPEG jpeg((char*) FNAME); // create jpeg object for a file
+		const char* filename = argc == 2 ? argv[1] : FNAME;
+		JPEG jpeg((char*) filename); // create jpeg object for a file
 		jpeg.GetDCTs(); // get DCT coefficients from file
 		std::cout << "Read is OK\n";
 //		if (!jpeg.cmpWith((char*) LOG)) { // compare DCTs with existing
@@ -31,7 +32,7 @@ int main(int argc, char **argv) {
 //		jpeg.PrintData();
 //		std::cout << "All is OK\n";
 
-		KZanalizer kz(jpeg.begin(), jpeg.end(), _CB);
+		KZanalizer kz(jpeg.begin(), jpeg.end(), _CB);	// create Analizer object
 		if(kz.Analize())
 			printf("this is stego: %.3f\%\n", kz.GetProbability());
 		else
