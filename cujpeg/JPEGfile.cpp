@@ -7,12 +7,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <math.h>
 #include "JPEGfile.h"
 //#include "DCTdataIterator.h"
 
 //#define PRINT_DATA
 //#define PRINT_DCT_DECODE_PROCESS
+//#define PRINT_DCT_BLOCK
 //#define PRINT_TREE
 //#define PRINT_CMP_PROCESS
 
@@ -47,20 +47,17 @@ int SOF0::memmv1bLeft(UINT8 *start, int len) {
 	return len;
 }
 JPEG::~JPEG() {
-	if (comment.str)
-		free(comment.str);
+	SAFE_FREE(comment.str);
 
 	for (int i = 0; i < 2; i++)
-		for (int j = 0; j < 2; j++)
-			if (hTable[i][j].code && hTable[i][j].mcodeslength) {
-				free(hTable[i][j].code);
-				hTable[i][j].mcodeslength = 0;
-			}
+		for (int j = 0; j < 2; j++){
+			SAFE_FREE(hTable[i][j].code);
+			hTable[i][j].mcodeslength = 0;
+		}
 
-	if (data.srcDataPtr)
-		free(data.srcDataPtr);
-	if (DCTdata)
-		free(DCTdata);
+
+	SAFE_FREE(data.srcDataPtr);
+	SAFE_FREE(DCTdata);
 }
 
 JPEG::JPEG(char *jfname) {
@@ -555,15 +552,19 @@ void JPEG::GetDCTs() throw (memory_fail) {
 				bit.NextBit();
 			}
 			bit.NextBit();
+#ifdef PRINT_DCT_BLOCK
+			DCTs.PrintBlock();
+			printf("\n");
+//			printf("\n");
+//			for (int i = 0; i < 8; i++) {
+//				for (int j = 0; j < 8; j++) {
+//					printf("%d ", DCTs[ZigZag_order2D[i][j]]);
+//				}
+//				printf("\n");
+//			}
+//			printf("\n");
+#endif
 #ifdef PRINT_DCT_DECODE_PROCESS
-			printf("\n");
-			for (int i = 0; i < 8; i++) {
-				for (int j = 0; j < 8; j++) {
-					printf("%d ", DCTs[ZigZag_order2D[i][j]]);
-				}
-				printf("\n");
-			}
-			printf("\n");
 			DCTs.PrintData();
 #endif
 			blk_counter++;
@@ -643,7 +644,7 @@ bool JPEG::cmpWith(char *fname) throw (memory_fail) {
 		if (!it2.lastBlock())
 			it2.mvToNextBlock();
 	}
-	free(cdat);
+	SAFE_FREE(cdat);
 	if (ret)
 		return false;
 	return true;
@@ -683,6 +684,7 @@ JPEG::DCTdataIterator::DCTdataIterator() {
 	dataLength = 0;
 	decimation = NULL;
 	curBlkPtr = NULL;
+	blkSize = BLK_LENGTH;
 
 	colorCount = 0;
 	curColor = _Y;
@@ -695,6 +697,7 @@ JPEG::DCTdataIterator::DCTdataIterator(JPEG *j) throw (NULLptr_fail) {
 	dataLength = j->DCTdataLength;
 	decimation = j->data.decimation;
 	curBlkPtr = j->DCTdata;
+	blkSize = BLK_LENGTH;
 
 	selfCheckNULL(__FILE__, __LINE__);
 	colorCount = 0;
@@ -709,6 +712,7 @@ JPEG::DCTdataIterator::DCTdataIterator(INT16* data, size_t dLength,
 	dataLength = dLength;
 	decimation = decim;
 	curBlkPtr = beginAddr;
+	blkSize = BLK_LENGTH;
 
 	selfCheckNULL(__FILE__, __LINE__);
 	colorCount = 0;
@@ -725,6 +729,7 @@ JPEG::DCTdataIterator::DCTdataIterator(const DCTdataIterator &it)
 	endAddr = it.endAddr;
 	dataLength = it.dataLength;
 	decimation = it.decimation;
+	blkSize = it.blkSize;
 
 	selfCheckNULL(__FILE__, __LINE__);
 	curColor = it.curColor;
@@ -748,12 +753,12 @@ int JPEG::DCTdataIterator::color() {
 
 bool JPEG::DCTdataIterator::lastBlock() throw (NULLptr_fail) {
 	selfCheckNULL(__FILE__, __LINE__);
-	return curBlkPtr + BLK_LENGTH >= endAddr;
+	return curBlkPtr + blkSize >= endAddr;
 }
 
 bool JPEG::DCTdataIterator::firstBlock() throw (NULLptr_fail) {
 	selfCheckNULL(__FILE__, __LINE__);
-	return curBlkPtr - BLK_LENGTH < beginAddr;
+	return curBlkPtr - blkSize < beginAddr;
 }
 
 JPEG::DCTdataIterator& JPEG::DCTdataIterator::begin() throw (NULLptr_fail) {
@@ -776,11 +781,11 @@ JPEG::DCTdataIterator& JPEG::DCTdataIterator::end() throw (NULLptr_fail) {
 JPEG::DCTdataIterator& JPEG::DCTdataIterator::mvToNextBlock()
 		throw (indexing_fail) { // move current pointer to next block & return current pointer
 	selfCheckNULL(__FILE__, __LINE__);
-	if (lastBlock()/*curBlkPtr + BLK_LENGTH >= jpeg->DCTdata + jpeg->DCTdataLength*/) {
+	if (curBlkPtr == endAddr/*lastBlock()*//*curBlkPtr + blkSize >= jpeg->DCTdata + jpeg->DCTdataLength*/) {
 		throw indexing_fail(__FILE__, __LINE__,
 				"DCTdataIterator::mvToNextBlock(): out of index range");
 	}
-	curBlkPtr += BLK_LENGTH;
+	curBlkPtr += blkSize;
 
 	if (curColIdx < decimation[curColor] - 1)
 		curColIdx++;
@@ -808,11 +813,11 @@ JPEG::DCTdataIterator& JPEG::DCTdataIterator::NextBlock() throw (indexing_fail) 
 
 JPEG::DCTdataIterator& JPEG::DCTdataIterator::mvToPrevBlock()
 		throw (indexing_fail) { // move current pointer to previous block & return current pointer
-	if (firstBlock()/*curBlkPtr - BLK_LENGTH < jpeg->DCTdata*/) {
+	if (curBlkPtr == beginAddr/*firstBlock()*//*curBlkPtr - blkSize < jpeg->DCTdata*/) {
 		throw indexing_fail(__FILE__, __LINE__,
 				"DCTdataIterator::mvToNextBlock(): out of index range");
 	}
-	curBlkPtr -= BLK_LENGTH;
+	curBlkPtr -= blkSize;
 	if (curColIdx > 0)
 		curColIdx--;
 	else {
@@ -871,7 +876,7 @@ INT16* JPEG::DCTdataIterator::getCurBlock() {
 }
 
 INT16& JPEG::DCTdataIterator::operator[](long long idx) throw (indexing_fail) {
-	if (idx < 0 || idx >= 64) {
+	if (idx < 0 || idx >= blkSize) {
 		char str[256];
 		sprintf(str, "DCTdataIterator::operator[]( %lld ): out of index range",
 				idx);
@@ -940,7 +945,7 @@ void JPEG::DCTdataIterator::PrintData() throw (indexing_fail) {
 		j++;
 	}
 	for (; j < 3; j++) {
-		for (int i = 0; i < 64; i++) {
+		for (int i = 0; i < blkSize; i++) {
 			printf("%d ", it[i]);
 			fflush(stdout);
 		}
@@ -953,6 +958,22 @@ void JPEG::DCTdataIterator::PrintData() throw (indexing_fail) {
 				printf("Next block does not exist\n");
 				return;
 			}
+	}
+}
+
+void JPEG::DCTdataIterator::PrintBlock() throw (indexing_fail) {
+	if (blkSize == BLK_LENGTH) {
+		for (int i = 0; i < blkSize / 8; i++) {
+			for (int j = 0; j < 8; j++)
+				printf("%d ", curBlkPtr[ZigZag_order2D[i][j]]);
+			printf("\n");
+		}
+	} else {
+		for (int i = 0; i < blkSize / 8; i++) {
+			for (int j = 0; j < 8; j++)
+				printf("%d ", curBlkPtr[i * 8 + j]);
+			printf("\n");
+		}
 	}
 }
 
