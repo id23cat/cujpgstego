@@ -285,6 +285,8 @@ public:
 		INT16* endAddr;
 		size_t dataLength; 	// in DCT coefficients
 		UINT8* decimation;	// decimation table
+	protected:
+		UINT8 blkSize;
 
 		//		static int objectCount;
 		//	static DCTdataIterator *IteratorObjects;
@@ -318,9 +320,14 @@ public:
 		DCTdataIterator PrevBlock() throw (indexing_fail); // return pointer to previous block (curBlkPtr does not change)
 		INT16 getPrevDC() throw (indexing_fail); // return DC coefficient from prev. block from curColor
 		INT16* getCurBlock();
+		UINT8* getDecimation(){return decimation;}
 
 		INT16& operator[](long long idx) throw (indexing_fail);
-		//INT16& operator[](long long idx) throw (indexing_fail);
+		bool operator>(const DCTdataIterator &it) const;
+		bool operator<(const DCTdataIterator &it) const;
+		bool operator>=(const DCTdataIterator &it) const;
+		bool operator<=(const DCTdataIterator &it) const;
+		bool operator==(const DCTdataIterator &it) const;
 
 		INT16& LineView(int y, int x); // Line indexing by 2d matrix view of DCT block
 		INT16& ZigZagView(int y, int x); // ZigZag indexing by 2d matrix view of DCT block
@@ -328,6 +335,7 @@ public:
 		INT16& ZigZagView(int x); // ZigZag indexing by vector view of DCT block
 
 		void PrintData() throw (indexing_fail);
+		void PrintBlock() throw (indexing_fail);
 	};
 
 //	class KZdataIterator: public DCTdataIterator {
@@ -355,6 +363,13 @@ public:
 
 	void GetDCTs()throw(memory_fail);				// decode DCT coefficients to DCTdata
 	bool cmpWith(char *fname)throw(memory_fail);	// compare DCTs with existing log file
+	DCTdataIterator begin(){
+		return DCTdataIterator(this);
+	};
+
+	DCTdataIterator end(){
+		return DCTdataIterator(this).end();
+	};
 //	KZdataIterator<INT16> getKZIterator();			// create iterator for a DCT structures
 //	KZdataIterator begin(){
 //		return KZdataIterator(this);
