@@ -38,6 +38,9 @@ int main(int argc, char **argv) {
 		else
 			printf("this is not stego: %.3f\%\n", kz.GetProbability());
 
+		KZanalizerCUDA kzcu(jpeg.begin(), jpeg.end(), _CB);	// create Analizer object
+		kzcu.Analize();
+
 	} catch (my_exception exc) {
 		std::cerr << exc.what() << std::endl;
 		if ( int const * mi=boost::get_error_info<int_info>(exc) )
