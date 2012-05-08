@@ -46,6 +46,7 @@ KZanalizer::KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, U
 }
 
 KZanalizer::KZanalizer(INT16 *data, size_t datalen){
+	colorComponent = _ALL;
 	size_t blkcount = datalen / 64;
 	dctLen = blkcount * 8;
 	SAFE_MALLOC_INT16(dctPtr, dctLen);
@@ -54,13 +55,16 @@ KZanalizer::KZanalizer(INT16 *data, size_t datalen){
 	JPEG::DCTdataIterator it(data, datalen, defaultDecimation);
 
 	while (it < it.end()) {
-		for (int i = 0; i < 8; i++)
-			kzit[i] = it[KochZhaoZZ_order[i]];
-		it.PrintBlock();
-		printf("\n");
-		kzit.PrintBlock();
-		printf("\n");
-		kzit.mvToNextBlock();
+		if(colorComponent == _ALL || colorComponent == it.color()){
+			for (int i = 0; i < 8; i++)
+				kzit[i] = it[KochZhaoZZ_order[i]];
+//		it.PrintBlock();
+//		printf("\n");
+//		kzit.PrintBlock();
+//		printf("\n");
+//		kzit.mvToNextBlock();
+			kzit.mvToNextBlock();
+		}
 		it.mvToNextBlock();
 	}
 }
@@ -166,7 +170,23 @@ float KZanalizer::KZdataIterator::SqrDeviation(){
 		d = this->operator[](i) - mean;
 		dev += (float)d*d;
 	}
-	return sqrt(dev/(float)(DCTdataIterator::blkSize-1));
+
+	{
+		float sum = 0;
+		float sum2 = 0;
+		float cnt = 0;
+		for(size_t i = 0; i < DCTdataIterator::blkSize; i++) {
+			sum += this->operator [](i);
+			sum2 += this->operator [](i) * this->operator [](i);
+			cnt++;
+		}
+		float mn = (float)sum/(float)(cnt);
+		float std = sqrt((float)(sum2/(cnt) - mn*mn));
+		float val = sqrt(dev/(float)(DCTdataIterator::blkSize));
+		printf ("%f = %f\n", val, std);
+	}
+//	return sqrt(dev/(float)(DCTdataIterator::blkSize-1));
+	return sqrt(dev/(float)(DCTdataIterator::blkSize));
 }
 
 size_t KZanalizer::build_hist(std::vector<HIST> &hist, float *data, VALUETYPE begin, VALUETYPE dist, VALUETYPE end){
