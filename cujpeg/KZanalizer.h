@@ -9,6 +9,7 @@
 #define KZANALIZER_H_
 #include "datatypes.h"
 #include "JPEGfile.h"
+#include "Exceptions.h"
 
 #define KZ_BLK_LENGTH 8
 #define DEFAULT_DECIMATION  {4,1,1}
