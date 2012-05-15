@@ -9,8 +9,15 @@
 #include <cutil_inline.h>
 #include <cuda_runtime.h>
 #include "KZanalizer.h"
-#include "Exceptions.h"
 
+
+#define SAFE_HOST_MALLOC(ptr, count, TYPE) if(!(ptr = (TYPE*) malloc(count * sizeof(TYPE)))){\
+		fprintf(stderr, "%s(%d): malloc (%d) bytes -- failed", __FILE__, __LINE__, count * sizeof(TYPE));\
+		exit(EXIT_FAILURE);}
+#define SAFE_DEVICE_MALLOC(ptr, count, TYPE) cutilSafeCall(cudaMalloc(&ptr, count * sizeof(TYPE)));
+
+#define COPY_TO_DEVICE(dst, src, count, TYPE) cutilSafeCall(cudaMemcpy(dst, src, count * sizeof(TYPE), cudaMemcpyHostToDevice));
+#define COPY_TO_HOST(dst, src, count, TYPE) cutilSafeCall(cudaMemcpy(dst, src, count * sizeof(TYPE), cudaMemcpyDeviceToHost));
 
 //#define CUDA_CALL(x) if ( x  != cudaSuccess ) { \
 		fprintf (stderr, " Error at %s :%d \n " , __FILE__ , __LINE__ ) ;\
@@ -161,61 +168,97 @@
 //}
 
 #define PLUS(a, b) a += b
-#define PLUSP(a, b) a += b*b
-__global__ void GStd(INT16 *dct, VALUETYPE *pStd, VALUETYPE *pSum){
-//	__shared__ VALUETYPE shsum[8];
-//	__shared__ VALUETYPE shsum2[8];
-//
+#define PLUS_SQ(a, b) a += b*b
+__global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
+		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL){
+	__shared__ VALUETYPE shsum[8];
+//	__shared__ VALUETYPE shsumsq[8];
+
 	// perform first level of reduction,
 	// reading from global memory, writing to shared memory
-	unsigned int tid = threadIdx.x;
-	unsigned int i = blockIdx.x*(blockDim.x*2) + threadIdx.x;
+	unsigned int tidx = threadIdx.x;
+	unsigned int idxG = blockIdx.x*(blockDim.x*2) + threadIdx.x;
+
+	INT16 val = dct[idxG];
+	VALUETYPE sum = val;
+//	VALUETYPE sumsq = val;
+
+	val = dct[idxG + blockDim.x];
+	PLUS(sum, val);
+//	PLUS_SQ(sumsq, val);
+
+	shsum[tidx] = sum;
+//	shsumsq[tidx] = sumsq;
+	__syncthreads();
 //
-//	INT16 val = dct[i];
-//	VALUETYPE sum = val;
-//	VALUETYPE sum2 = val;
-//
-//	val = dct[i+blockDim.x];
-//	PLUS(sum, val);
-//	PLUSP(sum2, val);
-//
-//	shsum[tid] = sum;
-//	shsum2[tid] = sum2;
-//	__syncthreads();
-//
-//	volatile VALUETYPE *smem = shsum;
-//	volatile VALUETYPE *smem2 = shsum2;
-//
-//	PLUS(sum, smem[tid + 2]);
-//	PLUSP(sum2, smem2[tid + 2]);
-//
-//	PLUS(sum, smem[tid + 1]);
-//	PLUSP(sum2, smem2[tid + 1]);
-	pSum[blockIdx.x] = 1;
-	dct[threadIdx.x + blockDim.x*blockIdx.x] = threadIdx.x;
-	if(tid == 0){
-//		VALUETYPE mean = sum/8;
-//		pSum[blockIdx.x] = sum;
-//		pStd[blockIdx.x] = sqrtf(sum2/8 - mean*mean);
-		pSum[blockIdx.x] = 1;
-		pStd[blockIdx.x] = blockIdx.x;
+	dct[idxG] = blockIdx.x;
+	volatile VALUETYPE *smem = shsum;
+//	volatile VALUETYPE *smemsq = shsumsq;
+
+	PLUS(smem[tidx], smem[tidx + 2]);
+//	PLUS_SQ(smemsq[tidx], smemsq[tidx + 2]);
+
+	PLUS(smem[tidx], smem[tidx + 1]);
+//	PLUS_SQ(smemsq[tidx], smemsq[tidx + 1]);
+	if(tidx == 0){
+		dct[idxG] = blockIdx.x;//smem[0];
+		psum[blockIdx.x] = blockIdx.x;
+//		psumsq[blockIdx.x] = smemsq[tidx];
+
+////		VALUETYPE mean = sum/8;
+////		pSum[blockIdx.x] = sum;
+////		pStd[blockIdx.x] = sqrtf(sum2/8 - mean*mean);
+//		pSum[blockIdx.x] = 1;
+//		pStd[blockIdx.x] = blockIdx.x;
 	}
 };
 
-//__device__ VALUETYPE gProbability;
+__global__ void DevTest(INT16 *dct){
+	int idx = blockIdx.x*(blockDim.x*2) +threadIdx.x;
+	dct[idx] = blockIdx.x;
+}
 
-//__global__ void GMean(INT16 *dct, size_t dctlen, VALUETYPE *mean){
+
+template <typename FD>
+struct MEM{
+	FD *ptr;
+	size_t length;	// length in elements
+	MEM(): ptr(NULL), length(0){};
+	MEM(int VAL): ptr(NULL), length(VAL){};
+};
+
+typedef MEM<INT16> HOST_I16;
+typedef MEM<INT16> DEV_I16;
+typedef MEM<VALUETYPE> HOST_F32;
+typedef MEM<VALUETYPE> DEV_F32;
+
+//#define MEM_H2D(H, D, TYPE) cutilSafeCall(cudaMalloc(&D.ptr, dctLen * sizeof(INT16)));
+
+
+
+//inline cudaError_t HostToDev(DEV_I16 dst, HOST_I16 src = MEM<INT16>(0)){
+//	if(dst.ptr == NULL){
+//		if(dst.length > src.length)
+//			cutilSafeCall(
+//				cudaMalloc(&dst.ptr, dst.length * sizeof(INT16)));
+//		else if(src.length){
+//			cutilSafeCall(
+//				cudaMalloc(&dst.ptr, src.length * sizeof(INT16)));
+//			dst.length = src.length;
+//		}
+//		else return cudaErrorMemoryAllocation;
+//	}else if(dst.length < src.length){
+//		cudaFree(dst.ptr);
+//		cutilSafeCall(
+//			cudaMalloc(&dst.ptr, src.length * sizeof(INT16)));
+//		dst.length = src.length;
+//	}
+//	if(src.ptr != NULL && src.length)
+//		cutilSafeCall(
+//			cudaMemcpy(dst.ptr, src.ptr, dst.length * sizeof(INT16), cudaMemcpyHostToDevice));
 //
-//};
-//
-//__global__ void GStd(INT16 *dct, size_t dctlen, VALUETYPE *std){
-//
-//};
-//
-//__global__ void GAnalize(INT16 *dct, size_t dctlen, VALUETYPE *probability){
-//
-//};
-//
+//	return cudaSuccess;
+//}
 
 int KZanalizerCUDA::InitMem(){
 	cutilSafeCall(
@@ -238,39 +281,51 @@ int KZanalizerCUDA::InitMem(){
 
 bool KZanalizerCUDA::Analize(int Pthreshold ){
 	InitMem();
-	VALUETYPE *hStd = (VALUETYPE*) malloc( blockCount * sizeof(VALUETYPE));
-	if(!hStd)
-		fprintf(stderr, "hStd\n");
-	VALUETYPE *hSum = (VALUETYPE*) malloc( blockCount * sizeof(VALUETYPE));
-	if(!hSum)
-		fprintf(stderr, "hSum\n");
 
-	INT16 *m = (INT16*)malloc(dctLen * sizeof(INT16));
+	INT16 *dsum, *hsum, *dsumsq, *hsumsq;
+	INT16 *ppp;
+	SAFE_HOST_MALLOC(ppp, dctLen, INT16);
+	SAFE_HOST_MALLOC(hsum, blockCount, INT16);
+	SAFE_HOST_MALLOC(hsumsq, blockCount, INT16);
+	SAFE_DEVICE_MALLOC(dsum, blockCount, INT16);
+	cutilSafeCall(cudaMemset(dsum, 0, blockCount*sizeof(INT16)));
+	SAFE_DEVICE_MALLOC(dsumsq, blockCount, INT16);
 
-	for(int i=0; i<dctLen; i++)
-			printf("DCT[%d]=%f\n", i, dctPtr[i]);
-
-
-	dim3 blockSize(8);	//4
+	dim3 blockSize(4);	//4
 	dim3 gridSize(blockCount);
-//	dim3 gridSize(10);
-	GStd<<<gridSize, blockCount>>>(dDCTptr, dStd, dSum);
+////	dim3 gridSize(10);
+//	GStd<<<gridSize, blockCount>>>(dDCTptr, dStd, dSum);
+	GStd<<<gridSize, blockSize>>>(dDCTptr, dsum, dsumsq);
 
-	cutilSafeCall(
-				cudaMemcpy(m, dDCTptr, dctLen * sizeof(INT16), cudaMemcpyDeviceToHost));
-	cutilSafeCall(
-			cudaMemcpy(hSum, dSum, blockCount * sizeof(VALUETYPE), cudaMemcpyDeviceToHost));
-	cutilSafeCall(
-			cudaMemcpy(hStd, dStd, blockCount * sizeof(VALUETYPE), cudaMemcpyDeviceToHost));
+	COPY_TO_HOST(hsum, dsum, blockCount, INT16);
+	COPY_TO_HOST(hsumsq, dsumsq, blockCount, INT16);
+	COPY_TO_HOST(ppp, dDCTptr, dctLen, INT16);
 
-	for(int i=0; i<gridSize.x; i++)
-		printf("Sum[%d]=%f, Std[%d]=%f\n", i, hSum[i], i, hStd[i]);
-	for(int i=0; i<dctLen; i++)
-			printf("M[%d]=%d\n", i, m[i]);
-
-	printf("Bloks = %d", blockCount);
-	free (hStd);
-	free (hSum);
+	for(int i=0,k=0,j=0; i<dctLen; i++){
+		printf("DCT[%d]=%d DCT[%d]=%d\n", i, dctPtr[i], i, ppp[i]);
+		k++;
+		if( k== 8){
+			printf("\t SUM[%d]=%d, SUMSQ[%d]=%d\n", j, hsum[j], j, hsumsq[j]);
+			j++;
+			k=0;
+		}
+	}
+//
+//	cutilSafeCall(
+//				cudaMemcpy(m, dDCTptr, dctLen * sizeof(INT16), cudaMemcpyDeviceToHost));
+//	cutilSafeCall(
+//			cudaMemcpy(hSum, dSum, blockCount * sizeof(VALUETYPE), cudaMemcpyDeviceToHost));
+//	cutilSafeCall(
+//			cudaMemcpy(hStd, dStd, blockCount * sizeof(VALUETYPE), cudaMemcpyDeviceToHost));
+//
+//	for(int i=0; i<gridSize.x; i++)
+//		printf("Sum[%d]=%f, Std[%d]=%f\n", i, hSum[i], i, hStd[i]);
+//	for(int i=0; i<dctLen; i++)
+//			printf("M[%d]=%d\n", i, m[i]);
+//
+//	printf("Bloks = %d", blockCount);
+//	free (hStd);
+//	free (hSum);
 	return false;
 }
 
