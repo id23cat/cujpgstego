@@ -19,7 +19,10 @@ static UINT8 defaultDecimation[3] = DEFAULT_DECIMATION;
 #endif
 
 #define VALUETYPE float
-#define SIGMA 0.354f
+//#define SIGMA 0.354f		// for N-1
+#define SIGMA 0.331f		// for N
+
+#define TIME_COMPARE		// calculate time
 
 typedef struct HISTOGRAM{
 	UINT32 count;

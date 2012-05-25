@@ -10,6 +10,8 @@
 #include <cuda_runtime.h>
 #include "KZanalizer.h"
 
+#include "cudefines.h"
+
 
 #define SAFE_HOST_MALLOC(ptr, count, TYPE) if(!(ptr = (TYPE*) malloc(count * sizeof(TYPE)))){\
 		fprintf(stderr, "%s(%d): malloc (%d) bytes -- failed", __FILE__, __LINE__, count * sizeof(TYPE));\
@@ -172,7 +174,7 @@
 __global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL){
 	__shared__ VALUETYPE shsum[8];
-//	__shared__ VALUETYPE shsumsq[8];
+	__shared__ VALUETYPE shsumsq[8];
 
 	// perform first level of reduction,
 	// reading from global memory, writing to shared memory
@@ -180,29 +182,30 @@ __global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 	unsigned int idxG = blockIdx.x*(blockDim.x*2) + threadIdx.x;
 
 	INT16 val = dct[idxG];
-	VALUETYPE sum = val;
-//	VALUETYPE sumsq = val;
+	VALUETYPE sum = val;		// SUM
+	VALUETYPE sumsq = val;		// SUM OF SQUARES
 
 	val = dct[idxG + blockDim.x];
 	PLUS(sum, val);
-//	PLUS_SQ(sumsq, val);
+	PLUS_SQ(sumsq, val);
 
 	shsum[tidx] = sum;
-//	shsumsq[tidx] = sumsq;
+	shsumsq[tidx] = sumsq;
 	__syncthreads();
 //
 	dct[idxG] = blockIdx.x;
 	volatile VALUETYPE *smem = shsum;
-//	volatile VALUETYPE *smemsq = shsumsq;
+	volatile VALUETYPE *smemsq = shsumsq;
 
 	PLUS(smem[tidx], smem[tidx + 2]);
-//	PLUS_SQ(smemsq[tidx], smemsq[tidx + 2]);
+	PLUS_SQ(smemsq[tidx], smemsq[tidx + 2]);
 
 	PLUS(smem[tidx], smem[tidx + 1]);
-//	PLUS_SQ(smemsq[tidx], smemsq[tidx + 1]);
+	PLUS_SQ(smemsq[tidx], smemsq[tidx + 1]);
+
 	if(tidx == 0){
-		dct[idxG] = blockIdx.x;//smem[0];
-		psum[blockIdx.x] = blockIdx.x;
+		dct[idxG] = smem[0];
+//		psum[blockIdx.x] = smem[0];
 //		psumsq[blockIdx.x] = smemsq[tidx];
 
 ////		VALUETYPE mean = sum/8;
@@ -265,12 +268,12 @@ int KZanalizerCUDA::InitMem(){
 			cudaMalloc(&dDCTptr, dctLen * sizeof(INT16)));
 	cutilSafeCall(
 			cudaMemcpy(dDCTptr, dctPtr, dctLen * sizeof(INT16), cudaMemcpyHostToDevice));
-	cutilSafeCall(
-			cudaMalloc(&dMean, blockCount * sizeof(VALUETYPE)));
-	cutilSafeCall(
-			cudaMalloc(&dStd, blockCount * sizeof(VALUETYPE)));
-	cutilSafeCall(
-			cudaMalloc(&dSum, blockCount * sizeof(VALUETYPE)));
+//	cutilSafeCall(
+//			cudaMalloc(&dMean, blockCount * sizeof(VALUETYPE)));
+//	cutilSafeCall(
+//			cudaMalloc(&dStd, blockCount * sizeof(VALUETYPE)));
+//	cutilSafeCall(
+//			cudaMalloc(&dSum, blockCount * sizeof(VALUETYPE)));
 //	cutilSafeCall(
 //			cudaMalloc(&gHist, dctLen * sizeof(VALUETYPE)));
 
@@ -280,35 +283,40 @@ int KZanalizerCUDA::InitMem(){
 }
 
 bool KZanalizerCUDA::Analize(int Pthreshold ){
+	TIMER_START();
 	InitMem();
 
-	INT16 *dsum, *hsum, *dsumsq, *hsumsq;
-	INT16 *ppp;
-	SAFE_HOST_MALLOC(ppp, dctLen, INT16);
-	SAFE_HOST_MALLOC(hsum, blockCount, INT16);
-	SAFE_HOST_MALLOC(hsumsq, blockCount, INT16);
-	SAFE_DEVICE_MALLOC(dsum, blockCount, INT16);
-	cutilSafeCall(cudaMemset(dsum, 0, blockCount*sizeof(INT16)));
-	SAFE_DEVICE_MALLOC(dsumsq, blockCount, INT16);
+//	INT16 *dsum, *hsum, *dsumsq, *hsumsq;
+
+//	SAFE_HOST_MALLOC(hsum, blockCount, INT16);
+//	SAFE_HOST_MALLOC(hsumsq, blockCount, INT16);
+//	SAFE_DEVICE_MALLOC(dsum, blockCount, INT16);
+//	cutilSafeCall(cudaMemset(dsum, 0, blockCount*sizeof(INT16)));
+//	SAFE_DEVICE_MALLOC(dsumsq, blockCount, INT16);
 
 	dim3 blockSize(4);	//4
 	dim3 gridSize(blockCount);
 ////	dim3 gridSize(10);
 //	GStd<<<gridSize, blockCount>>>(dDCTptr, dStd, dSum);
-	GStd<<<gridSize, blockSize>>>(dDCTptr, dsum, dsumsq);
+//	GStd<<<gridSize, blockSize>>>(dDCTptr, dsum, dsumsq);
+	GStd<<<gridSize, blockSize>>>( dDCTptr );
 
-	COPY_TO_HOST(hsum, dsum, blockCount, INT16);
-	COPY_TO_HOST(hsumsq, dsumsq, blockCount, INT16);
+	TIMER_STOP("GPU STD");
+
+	INT16 *ppp;
+	SAFE_HOST_MALLOC(ppp, dctLen, INT16);
+//	COPY_TO_HOST(hsum, dsum, blockCount, INT16);
+//	COPY_TO_HOST(hsumsq, dsumsq, blockCount, INT16);
 	COPY_TO_HOST(ppp, dDCTptr, dctLen, INT16);
 
 	for(int i=0,k=0,j=0; i<dctLen; i++){
 		printf("DCT[%d]=%d DCT[%d]=%d\n", i, dctPtr[i], i, ppp[i]);
-		k++;
-		if( k== 8){
-			printf("\t SUM[%d]=%d, SUMSQ[%d]=%d\n", j, hsum[j], j, hsumsq[j]);
-			j++;
-			k=0;
-		}
+//		k++;
+//		if( k== 8){
+//			printf("\t SUM[%d]=%d, SUMSQ[%d]=%d\n", j, hsum[j], j, hsumsq[j]);
+//			j++;
+//			k=0;
+//		}
 	}
 //
 //	cutilSafeCall(
@@ -332,12 +340,12 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 KZanalizerCUDA::~KZanalizerCUDA(){
 	cutilSafeCall(
 			cudaFree(dDCTptr));
-	cutilSafeCall(
-			cudaFree(dMean));
-	cutilSafeCall(
-			cudaFree(dStd));
-	cutilSafeCall(
-			cudaFree(dSum));
+//	cutilSafeCall(
+//			cudaFree(dMean));
+//	cutilSafeCall(
+//			cudaFree(dStd));
+//	cutilSafeCall(
+//			cudaFree(dSum));
 //	SAFE_FREE(hSum);
 //	SAFE_FREE(hStd);
 }

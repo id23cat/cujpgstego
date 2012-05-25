@@ -10,6 +10,10 @@
 #include <math.h>
 #include <algorithm>
 
+#ifdef TIME_COMPARE
+#include "cudefines.h"
+#endif
+
 KZanalizer::KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 comp) {
 	colorComponent = comp;
 	// calculate elements count
@@ -81,19 +85,29 @@ bool KZanalizer::Analize(int Pthreshold){
 	SAFE_MALLOC(stdArray, blockCount,float);
 
 	size_t i=0;
+
+	// calculate STD for all blocks
+#ifdef TIME_COMPARE
+	TIMER_START();
+#endif
 	while(it < end){
 		stdArray[i++] = it.SqrDeviation();
 //		printf("std = %f\n",stdArray[i-1]);
 		it.mvToNextBlock();
 	}
+#ifdef TIME_COMPARE
+	TIMER_STOP("CPU STD");
+//	printf("%s time: %.5fms\n", str, elapsedTime);
+#endif
 	std::vector<HIST> hist;
-	VALUETYPE N = (VALUETYPE)build_hist(hist, stdArray, 0.05f, 0.0001f, 3.f);
+	VALUETYPE N = (VALUETYPE)build_hist(hist, stdArray, 0.05f, 0.001f, 1.f);	//3.f
 	Compare compobj;
 	std::vector<HIST>::iterator maxit = std::max_element(hist.begin(), hist.end(), compobj);
 
 	printf("maxValue = %f, maxCount = %d\n", (*maxit).value, (*maxit).count);
 
-	// compare with sigma=0.354 value
+	// compare with sigma=0.354 value for N-1
+	// compare with sigma=0.331 value for N
 	if((*maxit).value > SIGMA){
 		probability = 100;
 		return true;		// this is stogo!
@@ -171,20 +185,20 @@ float KZanalizer::KZdataIterator::SqrDeviation(){
 		dev += (float)d*d;
 	}
 
-	{
-		float sum = 0;
-		float sum2 = 0;
-		float cnt = 0;
-		for(size_t i = 0; i < DCTdataIterator::blkSize; i++) {
-			sum += this->operator [](i);
-			sum2 += this->operator [](i) * this->operator [](i);
-			cnt++;
-		}
-		float mn = (float)sum/(float)(cnt);
-		float std = sqrt((float)(sum2/(cnt) - mn*mn));
-		float val = sqrt(dev/(float)(DCTdataIterator::blkSize));
-		printf ("%f = %f\n", val, std);
-	}
+//	{
+//		float sum = 0;
+//		float sum2 = 0;
+//		float cnt = 0;
+//		for(size_t i = 0; i < DCTdataIterator::blkSize; i++) {
+//			sum += this->operator [](i);
+//			sum2 += this->operator [](i) * this->operator [](i);
+//			cnt++;
+//		}
+//		float mn = (float)sum/(float)(cnt);
+//		float std = sqrt((float)(sum2/(cnt) - mn*mn));
+//		float val = sqrt(dev/(float)(DCTdataIterator::blkSize));
+////		printf ("%f = %f\n", val, std);
+//	}
 //	return sqrt(dev/(float)(DCTdataIterator::blkSize-1));
 	return sqrt(dev/(float)(DCTdataIterator::blkSize));
 }
@@ -208,6 +222,8 @@ size_t KZanalizer::build_hist(std::vector<HIST> &hist, float *data, VALUETYPE be
 //	printf("%5f\n", dist);
 
 	for(size_t i=0; i<blockCount; i++){
+		if(data[i] > end)
+			hist[end * k - x0].count++;
 		if(data[i] < begin || data[i] > end) continue;
 		z = data[i] * k - x0;
 		hist[z].count++;
