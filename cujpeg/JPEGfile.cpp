@@ -10,7 +10,7 @@
 #include "JPEGfile.h"
 //#include "DCTdataIterator.h"
 
-//#define PRINT_DATA
+#define PRINT_DATA
 //#define PRINT_DCT_DECODE_PROCESS
 //#define PRINT_DCT_BLOCK
 //#define PRINT_TREE
@@ -121,6 +121,7 @@ int JPEG::readDQT() {
 	size_t length = readFlag(); // read length
 	UINT8 byte;
 
+	for(int l = length -2; l>0; l-=65){
 	jfile.Read(&byte, 1, 1);
 	UINT8 ID = LOW(byte);
 	qTable[ID].qtID = ID;
@@ -131,6 +132,7 @@ int JPEG::readDQT() {
 		jfile.Read(qTable[ID].qTable8, 1, 64);
 	else
 		jfile.Read(qTable[ID].qTable16, 1, 64);
+	}
 
 	//	if (ID == _Y_) {
 	//		qTableY.qtID = ID;
@@ -317,6 +319,7 @@ int JPEG::parseJpeg() {
 			readJFIF();
 			//			jfif.PrintData();
 			break;
+
 		case 0xFFFE: // comment
 			readComment();
 #ifdef PRINT_DATA
@@ -324,6 +327,7 @@ int JPEG::parseJpeg() {
 			comment.PrintData();
 #endif
 			break;
+
 		case 0xFFDB: // DQT
 			readDQT();
 #ifdef PRINT_DATA
@@ -334,6 +338,7 @@ int JPEG::parseJpeg() {
 			qTable[1].PrintData();
 #endif
 			break;
+
 		case 0xFFC0: // SOF0
 			readSOF0();
 #ifdef PRINT_DATA
@@ -357,6 +362,7 @@ int JPEG::parseJpeg() {
 			//			hTable[_CBCR_][_AC].tree.PrintData();
 #endif
 			break;
+
 		case 0xFFDA: // SOS
 
 			readSOS();
@@ -370,11 +376,13 @@ int JPEG::parseJpeg() {
 			printf("\n");
 #endif
 			break;
+
 		case 0xFFD9: // EOF
 #ifdef PRINT_DATA
 			printf("FFD9\n");
 #endif
 			return 0;
+
 		default:
 			//			fprintf(stderr, "ooo!: Unknown JPEG flag: 0x%X\n", flag);
 			std::stringstream sstr;

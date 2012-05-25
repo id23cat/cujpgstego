@@ -69,7 +69,7 @@ struct DQT { // Quantization table
 	void PrintData() {
 		if (length) {
 			printf("DQT(%d bytes): qtID=%d,\n", length, qtID);
-			printf("\tqTable(typesize=%d): ", tElLength);
+			printf("\tqTable(typesize = %d bytes): ", tElLength+1);
 			for (int i = 0; i < 64; i++)
 				printf("%x ", qTable8[i]);
 			printf("\n");
