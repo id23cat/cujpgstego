@@ -12,15 +12,6 @@
 
 #include "cudefines.h"
 
-
-#define SAFE_HOST_MALLOC(ptr, count, TYPE) if(!(ptr = (TYPE*) malloc(count * sizeof(TYPE)))){\
-		fprintf(stderr, "%s(%d): malloc (%d) bytes -- failed", __FILE__, __LINE__, count * sizeof(TYPE));\
-		exit(EXIT_FAILURE);}
-#define SAFE_DEVICE_MALLOC(ptr, count, TYPE) cutilSafeCall(cudaMalloc(&ptr, count * sizeof(TYPE)));
-
-#define COPY_TO_DEVICE(dst, src, count, TYPE) cutilSafeCall(cudaMemcpy(dst, src, count * sizeof(TYPE), cudaMemcpyHostToDevice));
-#define COPY_TO_HOST(dst, src, count, TYPE) cutilSafeCall(cudaMemcpy(dst, src, count * sizeof(TYPE), cudaMemcpyDeviceToHost));
-
 //#define CUDA_CALL(x) if ( x  != cudaSuccess ) { \
 		fprintf (stderr, " Error at %s :%d \n " , __FILE__ , __LINE__ ) ;\
 		exit(EXIT_FAILURE) ;}
@@ -169,12 +160,17 @@
 //    if (tid == 0) g_odata[blockIdx.x] = sdata[0];
 //}
 
+#define WARP_SIZE 32
+#define HALF_WARP 16
+#define HALF_KZBLOCK 4
+
 #define PLUS(a, b) a += b
 #define PLUS_SQ(a, b) a += b*b
+
 __global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL){
-	__shared__ VALUETYPE shsum[8];
-	__shared__ VALUETYPE shsumsq[8];
+	__shared__ INT16 shsum[4];
+	__shared__ INT16 shsumsq[4];
 
 	// perform first level of reduction,
 	// reading from global memory, writing to shared memory
@@ -182,8 +178,8 @@ __global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 	unsigned int idxG = blockIdx.x*(blockDim.x*2) + threadIdx.x;
 
 	INT16 val = dct[idxG];
-	VALUETYPE sum = val;		// SUM
-	VALUETYPE sumsq = val;		// SUM OF SQUARES
+	INT16 sum = val;		// SUM
+	INT16 sumsq = val;		// SUM OF SQUARES
 
 	val = dct[idxG + blockDim.x];
 	PLUS(sum, val);
@@ -192,22 +188,24 @@ __global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 	shsum[tidx] = sum;
 	shsumsq[tidx] = sumsq;
 	__syncthreads();
-//
-	dct[idxG] = blockIdx.x;
-	volatile VALUETYPE *smem = shsum;
-	volatile VALUETYPE *smemsq = shsumsq;
 
-	PLUS(smem[tidx], smem[tidx + 2]);
-	PLUS_SQ(smemsq[tidx], smemsq[tidx + 2]);
+	volatile INT16 *smem = shsum;
+	volatile INT16 *smemsq = shsumsq;
 
-	PLUS(smem[tidx], smem[tidx + 1]);
-	PLUS_SQ(smemsq[tidx], smemsq[tidx + 1]);
+	if(tidx < 2){
+		PLUS(smem[tidx], smem[tidx + 2]);
+		PLUS_SQ(smemsq[tidx], smemsq[tidx + 2]);
+	}
 
 	if(tidx == 0){
-		dct[idxG] = smem[0];
+		PLUS(smem[tidx], smem[tidx + 1]);
+		PLUS_SQ(smemsq[tidx], smemsq[tidx + 1]);
+
+		dct[idxG] = smem[tidx];
+
+
 //		psum[blockIdx.x] = smem[0];
 //		psumsq[blockIdx.x] = smemsq[tidx];
-
 ////		VALUETYPE mean = sum/8;
 ////		pSum[blockIdx.x] = sum;
 ////		pStd[blockIdx.x] = sqrtf(sum2/8 - mean*mean);
@@ -216,24 +214,86 @@ __global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 	}
 };
 
-__global__ void DevTest(INT16 *dct){
-	int idx = blockIdx.x*(blockDim.x*2) +threadIdx.x;
-	dct[idx] = blockIdx.x;
-}
+__global__ void GStd2(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
+		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL){
+	__shared__ INT16 shsum[512*2];
+	__shared__ INT16 shsumsq[512*2];
+//	__shared__ INT16* shsum;
+//	__shared__ INT16* shsumsq;
+////
+////	The first thread in the block does the allocation
+////	and then shares the pointer with all other threads
+////	through shared memory, so that access can easily be coalesced.
+//	if(threadIdx.x == 0){
+//		shsum = (INT16*)malloc(blockDim.x * sizeof(INT16));
+//		shsumsq = (INT16*)malloc(blockDim.x * sizeof(INT16));
+//	}
+//	__syncthreads();
 
 
-template <typename FD>
-struct MEM{
-	FD *ptr;
-	size_t length;	// length in elements
-	MEM(): ptr(NULL), length(0){};
-	MEM(int VAL): ptr(NULL), length(VAL){};
+	// perform first level of reduction,
+	// reading from global memory, writing to shared memory
+	unsigned int tidx = threadIdx.x;
+	unsigned int idxG = blockIdx.x*(blockDim.x*2) + threadIdx.x;
+	unsigned int BASEidx = tidx%WARP_SIZE >= HALF_WARP;
+	unsigned int shidx = BASEidx + sizeof(INT16) * tidx;
+
+	INT16 val = dct[idxG];
+	INT16 sum = val;		// SUM
+	INT16 sumsq = val;		// SUM OF SQUARES
+
+	val = dct[idxG + HALF_KZBLOCK];
+	PLUS(sum, val);
+	PLUS_SQ(sumsq, val);
+
+	shsum[shidx] = sum;
+	shsumsq[shidx] = sumsq;
+	__syncthreads();
+
+	volatile INT16 *smem = shsum;
+	volatile INT16 *smemsq = shsumsq;
+
+	//// !!?????
+	if(tidx < 2){
+		PLUS(smem[tidx], smem[tidx + 2]);
+		PLUS_SQ(smemsq[tidx], smemsq[tidx + 2]);
+	}
+
+	if(tidx == 0){
+		PLUS(smem[tidx], smem[tidx + 1]);
+		PLUS_SQ(smemsq[tidx], smemsq[tidx + 1]);
+
+		dct[idxG] = smem[tidx];
+
+
+//		psum[blockIdx.x] = smem[0];
+//		psumsq[blockIdx.x] = smemsq[tidx];
+////		VALUETYPE mean = sum/8;
+////		pSum[blockIdx.x] = sum;
+////		pStd[blockIdx.x] = sqrtf(sum2/8 - mean*mean);
+//		pSum[blockIdx.x] = 1;
+//		pStd[blockIdx.x] = blockIdx.x;
+	}
 };
 
-typedef MEM<INT16> HOST_I16;
-typedef MEM<INT16> DEV_I16;
-typedef MEM<VALUETYPE> HOST_F32;
-typedef MEM<VALUETYPE> DEV_F32;
+//__global__ void DevTest(INT16 *dct){
+//	int idx = blockIdx.x*(blockDim.x*2) +threadIdx.x;
+//	dct[idx] = blockIdx.x;
+//}
+
+
+//template <typename FD>
+//struct MEM{
+//	FD *ptr;
+//	size_t length;	// length in elements
+//	MEM(): ptr(NULL), length(0){};
+//	MEM(int VAL): ptr(NULL), length(VAL){};
+//};
+
+//typedef MEM<INT16> HOST_I16;
+//typedef MEM<INT16> DEV_I16;
+//typedef MEM<VALUETYPE> HOST_F32;
+//typedef MEM<VALUETYPE> DEV_F32;
 
 //#define MEM_H2D(H, D, TYPE) cutilSafeCall(cudaMalloc(&D.ptr, dctLen * sizeof(INT16)));
 
@@ -294,6 +354,13 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	cutilSafeCall(cudaMemset(dsum, 0, blockCount*sizeof(INT16)));
 //	SAFE_DEVICE_MALLOC(dsumsq, blockCount, INT16);
 
+	int shMpT = 2*sizeof(INT16);	// shared memory per thread in bytes;
+	int thcount = ColcMaxThreadsPerBLock(shMpT, 8, dctLen * sizeof(INT16), 4);
+	int blkcount = CalcBlockCount(shMpT, dctLen * sizeof(INT16), thcount);
+	printf("Threads count = %d, blocks count = %d (totMem = %d)\n",
+			thcount, blkcount, dctLen * sizeof(INT16));
+
+
 	dim3 blockSize(4);	//4
 	dim3 gridSize(blockCount);
 ////	dim3 gridSize(10);
@@ -309,15 +376,18 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	COPY_TO_HOST(hsumsq, dsumsq, blockCount, INT16);
 	COPY_TO_HOST(ppp, dDCTptr, dctLen, INT16);
 
-	for(int i=0,k=0,j=0; i<dctLen; i++){
-		printf("DCT[%d]=%d DCT[%d]=%d\n", i, dctPtr[i], i, ppp[i]);
+//	for(int i=0,k=0,j=0; i<dctLen; i++){
+//		printf("DCT[%d]=%d DCT[%d]=%d\n", i, dctPtr[i], i, ppp[i]);
 //		k++;
 //		if( k== 8){
-//			printf("\t SUM[%d]=%d, SUMSQ[%d]=%d\n", j, hsum[j], j, hsumsq[j]);
+////			printf("\t SUM[%d]=%d, SUMSQ[%d]=%d\n", j, hsum[j], j, hsumsq[j]);
+//			printf("\t[%d]=%d\n", j, ppp[i-7]);
 //			j++;
 //			k=0;
 //		}
-	}
+//	}
+
+
 //
 //	cutilSafeCall(
 //				cudaMemcpy(m, dDCTptr, dctLen * sizeof(INT16), cudaMemcpyDeviceToHost));
@@ -338,14 +408,13 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 }
 
 KZanalizerCUDA::~KZanalizerCUDA(){
-	cutilSafeCall(
-			cudaFree(dDCTptr));
+	SAFE_DEVICE_FREE(dDCTptr);
 //	cutilSafeCall(
 //			cudaFree(dMean));
 //	cutilSafeCall(
 //			cudaFree(dStd));
 //	cutilSafeCall(
 //			cudaFree(dSum));
-//	SAFE_FREE(hSum);
-//	SAFE_FREE(hStd);
+//	SAFE_HOST_FREE(hSum);
+//	SAFE_HOST_FREE(hStd);
 }
