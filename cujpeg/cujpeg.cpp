@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
 	try {
 		const char* filename = argc == 2 ? argv[1] : FNAME;
 		JPEG jpeg((char*) filename); // create jpeg object for a file
+		printf("%s\n", filename);
 		jpeg.GetDCTs(); // get DCT coefficients from file
 		std::cout << "Read is OK\n";
 //		if (!jpeg.cmpWith((char*) LOG)) { // compare DCTs with existing
@@ -37,6 +38,9 @@ int main(int argc, char **argv) {
 			printf("this is stego: %.3f\%\n", kz.GetProbability());
 		else
 			printf("this is not stego: %.3f\%\n", kz.GetProbability());
+
+		KZanalizerCUDA kzcu(jpeg.begin(), jpeg.end(), _CB);	// create Analizer object
+		kzcu.Analize();
 
 	} catch (my_exception exc) {
 		std::cerr << exc.what() << std::endl;

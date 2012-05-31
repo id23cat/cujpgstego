@@ -9,6 +9,7 @@
 #define KZANALIZER_H_
 #include "datatypes.h"
 #include "JPEGfile.h"
+#include "Exceptions.h"
 
 #define KZ_BLK_LENGTH 8
 #define DEFAULT_DECIMATION  {4,1,1}
@@ -18,10 +19,13 @@ static UINT8 defaultDecimation[3] = DEFAULT_DECIMATION;
 #endif
 
 #define VALUETYPE float
-#define SIGMA 0.354f
+//#define SIGMA 0.354f		// for N-1
+#define SIGMA 0.331f		// for N
+
+#define TIME_COMPARE		// calculate time
 
 typedef struct HISTOGRAM{
-	INT16 count;
+	UINT32 count;
 	VALUETYPE value;
 } HIST;
 
@@ -32,6 +36,7 @@ struct Compare {
 };
 
 class KZanalizer {
+protected:
 
 	INT16 *dctPtr;				// coefficients pointer
 	size_t dctLen;				// elements count
@@ -75,19 +80,27 @@ public:
 
 		float Mean();
 		float SqrDeviation();
-
-//		DCTdataIterator& mvToNextBlock() throw (indexing_fail){ return DCTdataIterator::mvToNextBlock();}
-		//		KZdataIterator begin(){return this.}
-		//		KZdataIterator end(){}
-
-//		INT16& operator[](int idx) throw (indexing_fail); // move to next item in block
-//		INT16& operator++() throw (indexing_fail); // move to next block
-//		KZdataIterator& mvToNextBlock() throw (indexing_fail); // move current pointer to next block & return current pointer
-//		KZdataIterator& mvToPrevBlock() throw (indexing_fail); // move current pointer to previous block & return current pointer
-
-//		KZdataIterator& operator&(KZdataIterator it) throw (indexing_fail);
 	};
 };
 
+class KZanalizerCUDA: public KZanalizer {
+	INT16 *dDCTptr;			// pointer in device memory
+	VALUETYPE *dMean;
+	VALUETYPE *dStd;
+	VALUETYPE *dSum;
+//	HIST *gHist;
+public:
+	KZanalizerCUDA(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 component=_ALL):
+	KZanalizer(begin, end, component){}; // take iterators
+//	KZanalizerCUDA(INT16 *data, size_t datalen); // take pointer to DCT sequence & count
+	virtual ~KZanalizerCUDA();
+	// Analize:
+	// true -- contain stego
+	// false -- clean image
+	bool Analize(int Pthreshold = 70);		// Pthreshold -- threshold for P-value
+private:
+	int InitMem();
+
+};
 
 #endif /* KZANALIZER_H_ */
