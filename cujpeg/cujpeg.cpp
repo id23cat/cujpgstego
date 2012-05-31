@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
 	try {
 		const char* filename = argc == 2 ? argv[1] : FNAME;
 		JPEG jpeg((char*) filename); // create jpeg object for a file
+		printf("%s\n", filename);
 		jpeg.GetDCTs(); // get DCT coefficients from file
 		std::cout << "Read is OK\n";
 //		if (!jpeg.cmpWith((char*) LOG)) { // compare DCTs with existing

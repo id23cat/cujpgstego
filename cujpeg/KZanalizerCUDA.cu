@@ -164,9 +164,12 @@
 #define HALF_WARP 16
 #define HALF_KZBLOCK 4
 
+#define BANK_COUNT 16	// 32
+
 #define PLUS(a, b) a += b
 #define PLUS_SQ(a, b) a += b*b
 
+/******************* GStd1 *********************/
 __global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL){
 	__shared__ INT16 shsum[4];
@@ -214,6 +217,8 @@ __global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 	}
 };
 
+
+/******************* GStd2 *********************/
 __global__ void GStd2(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL){
 	__shared__ INT16 shsum[512*2];
@@ -235,8 +240,21 @@ __global__ void GStd2(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 	// reading from global memory, writing to shared memory
 	unsigned int tidx = threadIdx.x;
 	unsigned int idxG = blockIdx.x*(blockDim.x*2) + threadIdx.x;
-	unsigned int BASEidx = tidx%WARP_SIZE >= HALF_WARP;
-	unsigned int shidx = BASEidx + sizeof(INT16) * tidx;
+
+	// if tidx
+//	unsigned int BASEidx = tidx%WARP_SIZE >= HALF_WARP;
+//	unsigned int shidx = BASEidx + sizeof(INT16) * tidx;
+
+	// for 1.x arch
+	unsigned int warpBlock = WARP_SIZE;			// 1.x elements count in the warp
+//	unsigned int warpSize = 2*WARP_SIZE;		// 2.x
+//	unsigned int BASEidx1x = tidx % WARP_SIZE >= BANK_COUNT;		// BANK_COUNT=16
+//	unsigned int BASEidx2x = tidx % (2*WARP_SIZE) >= BANK_COUNT;	// BANK_COUNT=32
+
+	unsigned int BASEidx1x = tidx % warpBlock >= BANK_COUNT;
+	BASEidx1x += (unsigned int)tidx/warpBlock * warpBlock;
+
+	unsigned int shidx = BASEidx + sizeof(INT16) * (tidx%;
 
 	INT16 val = dct[idxG];
 	INT16 sum = val;		// SUM
@@ -275,6 +293,50 @@ __global__ void GStd2(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 //		pStd[blockIdx.x] = blockIdx.x;
 	}
 };
+
+
+/******************* GStd3 *********************/
+typedef struct{
+	INT32 x;
+	INT32 y;
+	INT32 z;
+	INT32 w;
+} my_uint4;
+
+typedef struct ush2{
+	UINT16 x;
+	UINT16 y;
+	__device__ inline ush2(UINT32 i){x = i&0xFFFF0000; y = i&0x0000FFFF;};
+
+} my_ushort2;
+
+typedef struct{
+	INT16 x0;
+	INT16 x1;
+	INT16 y0;
+	INT16 y1;
+	INT16 z0;
+	INT16 z1;
+	INT16 w0;
+	INT16 w1;
+} my_int4;
+
+__global__ void GStd3(INT16 *dct){
+	my_int4 *ptr = (my_int4*)dct;
+	int tidx = threadIdx.x + blockDim.x * blockIdx.x;
+	my_int4 ui = ptr[tidx];
+
+	ui.x0 += ui.x1;
+	ui.x0 += ui.y0;
+	ui.x0 += ui.y1;
+	ui.x0 += ui.z0;
+	ui.x0 += ui.z1;
+	ui.x0 += ui.w0;
+	ui.x0 += ui.w1;
+	__syncthreads();
+
+	ptr[tidx] = ui;
+}
 
 //__global__ void DevTest(INT16 *dct){
 //	int idx = blockIdx.x*(blockDim.x*2) +threadIdx.x;
@@ -366,7 +428,10 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 ////	dim3 gridSize(10);
 //	GStd<<<gridSize, blockCount>>>(dDCTptr, dStd, dSum);
 //	GStd<<<gridSize, blockSize>>>(dDCTptr, dsum, dsumsq);
-	GStd<<<gridSize, blockSize>>>( dDCTptr );
+
+
+//	GStd<<<gridSize, blockSize>>>( dDCTptr );
+//	GStd3<<<4, 4>>>( dDCTptr );
 
 	TIMER_STOP("GPU STD");
 
@@ -376,16 +441,16 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	COPY_TO_HOST(hsumsq, dsumsq, blockCount, INT16);
 	COPY_TO_HOST(ppp, dDCTptr, dctLen, INT16);
 
-//	for(int i=0,k=0,j=0; i<dctLen; i++){
-//		printf("DCT[%d]=%d DCT[%d]=%d\n", i, dctPtr[i], i, ppp[i]);
-//		k++;
-//		if( k== 8){
-////			printf("\t SUM[%d]=%d, SUMSQ[%d]=%d\n", j, hsum[j], j, hsumsq[j]);
-//			printf("\t[%d]=%d\n", j, ppp[i-7]);
-//			j++;
-//			k=0;
-//		}
-//	}
+	for(int i=0,k=0,j=0; i<dctLen; i++){
+		printf("DCT[%d]=%d DCT[%d]=%d\n", i, dctPtr[i], i, ppp[i]);
+		k++;
+		if( k== 8){
+//			printf("\t SUM[%d]=%d, SUMSQ[%d]=%d\n", j, hsum[j], j, hsumsq[j]);
+			printf("\t[%d]=%d\n", j, ppp[i-7]);
+			j++;
+			k=0;
+		}
+	}
 
 
 //
