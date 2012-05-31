@@ -170,8 +170,8 @@
 #define PLUS_SQ(a, b) a += b*b
 
 /******************* GStd1 *********************/
-__global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
-		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL){
+__global__ void GStd(INT16 *dct/*, INT16 *psum=NULL, INT16 *psumsq=NULL,
+		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL*/){
 	__shared__ INT16 shsum[4];
 	__shared__ INT16 shsumsq[4];
 
@@ -219,8 +219,8 @@ __global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 
 
 /******************* GStd2 *********************/
-__global__ void GStd2(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
-		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL){
+__global__ void GStd2(INT16 *dct/*, INT16 *psum=NULL, INT16 *psumsq=NULL,
+		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL*/){
 	__shared__ INT16 shsum[512*2];
 	__shared__ INT16 shsumsq[512*2];
 //	__shared__ INT16* shsum;
@@ -254,7 +254,8 @@ __global__ void GStd2(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
 	unsigned int BASEidx1x = tidx % warpBlock >= BANK_COUNT;
 	BASEidx1x += (unsigned int)tidx/warpBlock * warpBlock;
 
-	unsigned int shidx = BASEidx + sizeof(INT16) * (tidx%;
+	// !!!
+	unsigned int shidx = BASEidx1x + sizeof(INT16) * (tidx%1);
 
 	INT16 val = dct[idxG];
 	INT16 sum = val;		// SUM
@@ -430,7 +431,7 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	GStd<<<gridSize, blockSize>>>(dDCTptr, dsum, dsumsq);
 
 
-//	GStd<<<gridSize, blockSize>>>( dDCTptr );
+	GStd<<<gridSize, blockSize>>>( dDCTptr );
 //	GStd3<<<4, 4>>>( dDCTptr );
 
 	TIMER_STOP("GPU STD");
