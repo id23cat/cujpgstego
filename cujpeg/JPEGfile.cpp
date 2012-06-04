@@ -889,7 +889,8 @@ INT16& JPEG::DCTdataIterator::operator[](long long idx) throw (indexing_fail) {
 				"DCTdataIterator::operator[]( %lld ): out of index range:\n",
 				idx);
 		sprintf(str, "%s\t%d(tcurBlkPtr+idx) >= %d(endAddress)", str,
-				(int) (curBlkPtr + idx), (int) (endAddr));
+				(size_t) (curBlkPtr + idx), 
+				(size_t) (endAddr));
 		throw indexing_fail(__FILE__, __LINE__, str);
 	}
 	return curBlkPtr[idx];
