@@ -911,7 +911,7 @@
 								<option defaultValue="gnu.c.optimization.level.none" id="cuda.toolchain.compiler.option.optimization.level.342415741" name="Optimization Level" superClass="cuda.toolchain.compiler.option.optimization.level" valueType="enumerated"/>
 								<option id="cuda.toolchain.compiler.option.debugging.level.514913713" name="Debug Level" superClass="cuda.toolchain.compiler.option.debugging.level"/>
 								<option id="cuda.toolchain.compiler.option.debugging.other.2110531605" name="Other debugging flags" superClass="cuda.toolchain.compiler.option.debugging.other" value="-G" valueType="string"/>
-								<option id="cuda.toolchain.compiler.option.misc.other.1609183597" name="Other flags" superClass="cuda.toolchain.compiler.option.misc.other" value="-c -Xcompiler -fmessage-length=0 --compiler-bindir /usr/bin/gcc-4.3  -arch sm_20" valueType="string"/>
+								<option id="cuda.toolchain.compiler.option.misc.other.1609183597" name="Other flags" superClass="cuda.toolchain.compiler.option.misc.other" value="-c -Xcompiler -fmessage-length=0 --compiler-bindir /usr/bin/gcc-4.3   --ptxas-options=-v" valueType="string"/>
 								<option id="cuda.toolchain.compiler.option.preprocessor.def.216051348" name="Defined symbols (-D)" superClass="cuda.toolchain.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="DEBUG"/>
 								</option>
