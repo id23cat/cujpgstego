@@ -12,6 +12,9 @@
 
 #include "cudefines.h"
 
+#define THREADS 512
+#define SHMEM THREADS*8
+
 //__align__(128) INT16 *dDCTptr;			// pointer in device memory
 
 //#define CUDA_CALL(x) if ( x  != cudaSuccess ) { \
@@ -378,7 +381,7 @@ __global__ void GStd4(INT16 *dct){
 
 __global__ void GStd5(INT16 *dct){
 
-	__shared__ INT16 shmem[2048];	//256*8 //4096// 8*512
+	__shared__ INT16 shmem[SHMEM];	//256*8 //4096// 8*512
 	int tidx = threadIdx.x + blockDim.x * blockIdx.x;
 	((uint4*)shmem)[threadIdx.x] = ((uint4*)dct)[tidx];
 
@@ -483,7 +486,7 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 
 //	GStd<<<gridSize, blockSize>>>( dDCTptr );
 
-	int threads = 256;
+	int threads = THREADS;
 //	GStd3<<<blockCount/threads+1, threads>>>( dDCTptr );
 //	GStd3<<<4, 4>>>( dDCTptr );
 //	GStd4<<<blockCount/threads+1, threads>>>( dDCTptr );
