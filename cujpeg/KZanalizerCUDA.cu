@@ -12,6 +12,8 @@
 
 #include "cudefines.h"
 
+//__align__(128) INT16 *dDCTptr;			// pointer in device memory
+
 //#define CUDA_CALL(x) if ( x  != cudaSuccess ) { \
 		fprintf (stderr, " Error at %s :%d \n " , __FILE__ , __LINE__ ) ;\
 		exit(EXIT_FAILURE) ;}
@@ -170,8 +172,8 @@
 #define PLUS_SQ(a, b) a += b*b
 
 /******************* GStd1 *********************/
-__global__ void GStd(INT16 *dct/*, INT16 *psum=NULL, INT16 *psumsq=NULL,
-		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL*/){
+__global__ void GStd(INT16 *dct, INT16 *psum=NULL, INT16 *psumsq=NULL,
+		VALUETYPE *pStd=NULL, VALUETYPE *pSum=NULL){
 	__shared__ INT16 shsum[4];
 	__shared__ INT16 shsumsq[4];
 
@@ -304,12 +306,13 @@ typedef struct{
 	INT32 w;
 } my_uint4;
 
-typedef struct ush2{
-	UINT16 x;
-	UINT16 y;
-	__device__ inline ush2(UINT32 i){x = i&0xFFFF0000; y = i&0x0000FFFF;};
+typedef struct sh2{
+	INT16 x;
+	INT16 y;
+	__device__ inline sh2(UINT32 i){x = i&0xFFFF0000; y = i&0x0000FFFF;};
+//	__device__ inline UINT32 toint(){return (UINT32)x<<16+y;};
 
-} my_ushort2;
+} my_short2;
 
 typedef struct{
 	INT16 x0;
@@ -322,10 +325,14 @@ typedef struct{
 	INT16 w1;
 } my_int4;
 
+#define ALIGN_UP(offset, alignment) \
+(offset) = ((offset) + (alignment) – 1) & ~((alignment) – 1)
+
 __global__ void GStd3(INT16 *dct){
 	my_int4 *ptr = (my_int4*)dct;
 	int tidx = threadIdx.x + blockDim.x * blockIdx.x;
 	my_int4 ui = ptr[tidx];
+
 
 	ui.x0 += ui.x1;
 	ui.x0 += ui.y0;
@@ -339,19 +346,64 @@ __global__ void GStd3(INT16 *dct){
 	ptr[tidx] = ui;
 }
 
-//__global__ void DevTest(INT16 *dct){
-//	int idx = blockIdx.x*(blockDim.x*2) +threadIdx.x;
-//	dct[idx] = blockIdx.x;
-//}
+#define FIRST(X) X >> 16
+#define LAST(X) X & 0x0000FFFF
 
+__global__ void GStd4(INT16 *dct){
+//	uint4 *ptr = (uint4*)dct;
 
-//template <typename FD>
-//struct MEM{
-//	FD *ptr;
-//	size_t length;	// length in elements
-//	MEM(): ptr(NULL), length(0){};
-//	MEM(int VAL): ptr(NULL), length(VAL){};
-//};
+	int tidx = threadIdx.x + blockDim.x * blockIdx.x;
+	uint4 ui4 = ((uint4*)dct)[tidx];
+
+	INT16 v = 0;
+
+	v += FIRST(ui4.x);
+	v += LAST(ui4.x);
+
+	v += FIRST(ui4.y);
+	v += LAST(ui4.y);
+
+	v += FIRST(ui4.z);
+	v += LAST(ui4.z);
+
+	v += FIRST(ui4.w);
+	v += LAST(ui4.w);
+
+	ui4.x = (UINT32)v;
+
+//	__syncthreads();
+
+	((uint4*)dct)[tidx] = ui4;
+}
+
+__global__ void GStd5(INT16 *dct){
+
+	__shared__ INT16 shmem[2048];	//256*8 //4096// 8*512
+	int tidx = threadIdx.x + blockDim.x * blockIdx.x;
+	((uint4*)shmem)[threadIdx.x] = ((uint4*)dct)[tidx];
+
+	int shidx = threadIdx.x*8;
+	INT16 v = 0;
+
+//#pragma unroll 4
+//	for(int i=0; i<8; i++)
+//		v += shmem[shidx+i];
+	v += shmem[shidx];
+	v += shmem[shidx+1];
+
+	v += shmem[shidx+2];
+	v += shmem[shidx+3];
+
+	v += shmem[shidx+4];
+	v += shmem[shidx+5];
+
+	v += shmem[shidx+6];
+	v += shmem[shidx+7];
+
+	shmem[shidx+0] = v;
+
+	((uint4*)dct)[tidx] = ((uint4*)shmem)[threadIdx.x];
+}
 
 //typedef MEM<INT16> HOST_I16;
 //typedef MEM<INT16> DEV_I16;
@@ -359,8 +411,6 @@ __global__ void GStd3(INT16 *dct){
 //typedef MEM<VALUETYPE> DEV_F32;
 
 //#define MEM_H2D(H, D, TYPE) cutilSafeCall(cudaMalloc(&D.ptr, dctLen * sizeof(INT16)));
-
-
 
 //inline cudaError_t HostToDev(DEV_I16 dst, HOST_I16 src = MEM<INT16>(0)){
 //	if(dst.ptr == NULL){
@@ -431,8 +481,13 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	GStd<<<gridSize, blockSize>>>(dDCTptr, dsum, dsumsq);
 
 
-	GStd<<<gridSize, blockSize>>>( dDCTptr );
+//	GStd<<<gridSize, blockSize>>>( dDCTptr );
+
+	int threads = 256;
+//	GStd3<<<blockCount/threads+1, threads>>>( dDCTptr );
 //	GStd3<<<4, 4>>>( dDCTptr );
+//	GStd4<<<blockCount/threads+1, threads>>>( dDCTptr );
+	GStd5<<<blockCount/threads+1, threads>>>( dDCTptr );
 
 	TIMER_STOP("GPU STD");
 
@@ -442,16 +497,16 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	COPY_TO_HOST(hsumsq, dsumsq, blockCount, INT16);
 	COPY_TO_HOST(ppp, dDCTptr, dctLen, INT16);
 
-	for(int i=0,k=0,j=0; i<dctLen; i++){
-		printf("DCT[%d]=%d DCT[%d]=%d\n", i, dctPtr[i], i, ppp[i]);
-		k++;
-		if( k== 8){
-//			printf("\t SUM[%d]=%d, SUMSQ[%d]=%d\n", j, hsum[j], j, hsumsq[j]);
-			printf("\t[%d]=%d\n", j, ppp[i-7]);
-			j++;
-			k=0;
-		}
-	}
+//	for(int i=0,k=0,j=0; i<dctLen; i++){
+//		printf("DCT[%d]=%d DCT[%d]=%d\n", i, dctPtr[i], i, ppp[i]);
+//		k++;
+//		if( k== 8){
+////			printf("\t SUM[%d]=%d, SUMSQ[%d]=%d\n", j, hsum[j], j, hsumsq[j]);
+//			printf("\t[%d]=%d\n", j, ppp[i-7]);
+//			j++;
+//			k=0;
+//		}
+//	}
 
 
 //
