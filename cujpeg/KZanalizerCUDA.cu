@@ -12,7 +12,11 @@
 
 #include "cudefines.h"
 
+#if (__CUDA_ARCH__ < 200)
+#define THREADS 256
+#else
 #define THREADS 512
+#endif
 #define SHMEM THREADS*8
 
 //__align__(128) INT16 *dDCTptr;			// pointer in device memory
@@ -408,6 +412,89 @@ __global__ void GStd5(INT16 *dct){
 	((uint4*)dct)[tidx] = ((uint4*)shmem)[threadIdx.x];
 }
 
+__device__ inline void SumSum(INT16 val, INT16 &sum, INT32 &sumsq){
+	sum +=val;
+	sumsq += val*val;
+}
+
+__global__ void GStd5_2(INT16 *dct){
+
+	__shared__ INT16 shmem[SHMEM];	//256*8 //4096// 8*512
+	int tidx = threadIdx.x + blockDim.x * blockIdx.x;
+	((uint4*)shmem)[threadIdx.x] = ((uint4*)dct)[tidx];
+
+	int shidx = threadIdx.x << 3;		// threadIdx.x*8;
+	INT16 sum = 0;
+	INT32 sumsq = 0;
+
+//#pragma unroll 4
+//	for(int i=0; i<8; i++)
+//		v += shmem[shidx+i];
+
+	SumSum( shmem[shidx], sum, sumsq);
+	SumSum( shmem[shidx+1], sum, sumsq);
+
+	SumSum(shmem[shidx+2], sum, sumsq);
+	SumSum(shmem[shidx+3], sum, sumsq);
+
+	SumSum(shmem[shidx+4], sum, sumsq);
+	SumSum(shmem[shidx+5], sum, sumsq);
+
+	SumSum(shmem[shidx+6], sum, sumsq);
+	SumSum(shmem[shidx+7], sum, sumsq);
+
+	shmem[shidx+0] = sum;
+	shmem[shidx+1] = sumsq;
+
+	((uint4*)dct)[tidx] = ((uint4*)shmem)[threadIdx.x];
+}
+
+__global__ void GStd6(INT16 *dct){
+
+	__shared__ INT16 shmem[SHMEM];	//256*8 //4096// 8*512
+	int tidx = threadIdx.x + blockDim.x * blockIdx.x;
+	((uint4*)shmem)[threadIdx.x] = ((uint4*)dct)[tidx];
+
+//	int shidx = threadIdx.x*8;
+	int shidx = threadIdx.x << 3;
+	INT16 v = 0;
+//	int i0 = threadIdx.x%16 >> 2 << 1;		// ((( thid % 16 ) / 4 ) * 2 )
+	int i0 = ( threadIdx.x - threadIdx.x >> 4) >> 2 << 1;
+
+//	int idx = 0;
+//#pragma unroll
+//	for(int i=0; i<8; i++){
+////		idx = ( i0 + i ) % 8;
+//		int k = i0 + i;
+//		idx = k -( k >> 3);
+//		v += shmem[ shidx + idx ];
+//	}
+
+	int idx = i0 - (i0 >> 3);
+	v += shmem[shidx + idx];
+	i0++; idx = i0 - (i0 >> 3);
+	v += shmem[shidx+idx];
+
+	i0++; idx = i0 - (i0 >> 3);
+	v += shmem[shidx+idx];
+	i0++; idx = i0 - (i0 >> 3);
+	v += shmem[shidx+idx];
+
+	i0++; idx = i0 - (i0 >> 3);
+	v += shmem[shidx+idx];
+	i0++; idx = i0 - (i0 >> 3);
+	v += shmem[shidx+idx];
+
+	i0++; idx = i0 - (i0 >> 3);
+	v += shmem[shidx+idx];
+	i0++; idx = i0 - (i0 >> 3);
+	v += shmem[shidx+idx];
+
+	shmem[shidx] = v;
+
+	((uint4*)dct)[tidx] = ((uint4*)shmem)[threadIdx.x];
+}
+
 //typedef MEM<INT16> HOST_I16;
 //typedef MEM<INT16> DEV_I16;
 //typedef MEM<VALUETYPE> HOST_F32;
@@ -490,7 +577,9 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	GStd3<<<blockCount/threads+1, threads>>>( dDCTptr );
 //	GStd3<<<4, 4>>>( dDCTptr );
 //	GStd4<<<blockCount/threads+1, threads>>>( dDCTptr );
-	GStd5<<<blockCount/threads+1, threads>>>( dDCTptr );
+//	GStd5<<<blockCount/threads+1, threads>>>( dDCTptr );
+	GStd5_2<<<blockCount/threads+1, threads>>>( dDCTptr );
+//	GStd6<<<blockCount/threads+1, threads>>>( dDCTptr );
 
 	TIMER_STOP("GPU STD");
 
