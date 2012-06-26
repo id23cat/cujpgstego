@@ -10,9 +10,12 @@
 #include <math.h>
 #include <algorithm>
 
-#ifdef TIME_COMPARE
+//#ifdef TIME_COMPARE
 #include "cudefines.h"
-#endif
+//#endif
+
+cudaEvent_t start, stop;
+float elapsedTime;
 
 KZanalizer::KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 comp) {
 	colorComponent = comp;

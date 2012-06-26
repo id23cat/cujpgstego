@@ -549,23 +549,15 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 	TIMER_START();
 	InitMem();
 
-//	INT16 *dsum, *hsum, *dsumsq, *hsumsq;
-
-//	SAFE_HOST_MALLOC(hsum, blockCount, INT16);
-//	SAFE_HOST_MALLOC(hsumsq, blockCount, INT16);
-//	SAFE_DEVICE_MALLOC(dsum, blockCount, INT16);
-//	cutilSafeCall(cudaMemset(dsum, 0, blockCount*sizeof(INT16)));
-//	SAFE_DEVICE_MALLOC(dsumsq, blockCount, INT16);
-
-	int shMpT = 2*sizeof(INT16);	// shared memory per thread in bytes;
-	int thcount = ColcMaxThreadsPerBLock(shMpT, 8, dctLen * sizeof(INT16), 4);
-	int blkcount = CalcBlockCount(shMpT, dctLen * sizeof(INT16), thcount);
-	printf("Threads count = %d, blocks count = %d (totMem = %d)\n",
-			thcount, blkcount, dctLen * sizeof(INT16));
+//	int shMpT = 2*sizeof(INT16);	// shared memory per thread in bytes;
+//	int thcount = ColcMaxThreadsPerBLock(shMpT, 8, dctLen * sizeof(INT16), 4);
+//	int blkcount = CalcBlockCount(shMpT, dctLen * sizeof(INT16), thcount);
+//	printf("Threads count = %d, blocks count = %d (totMem = %d)\n",
+//			thcount, blkcount, dctLen * sizeof(INT16));
 
 
-	dim3 blockSize(4);	//4
-	dim3 gridSize(blockCount);
+//	dim3 blockSize(4);	//4
+//	dim3 gridSize(blockCount);
 ////	dim3 gridSize(10);
 //	GStd<<<gridSize, blockCount>>>(dDCTptr, dStd, dSum);
 //	GStd<<<gridSize, blockSize>>>(dDCTptr, dsum, dsumsq);
@@ -574,6 +566,7 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	GStd<<<gridSize, blockSize>>>( dDCTptr );
 
 	int threads = THREADS;
+	printf("Threads count = %d, blocks count = %d\n", threads, blockCount/threads+1);
 //	GStd3<<<blockCount/threads+1, threads>>>( dDCTptr );
 //	GStd3<<<4, 4>>>( dDCTptr );
 //	GStd4<<<blockCount/threads+1, threads>>>( dDCTptr );

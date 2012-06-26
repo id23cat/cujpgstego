@@ -1,15 +1,14 @@
 /*
- * cudefines.hpp
+ * cudefines.h
  *
  *  Created on: 25.05.2012
  *      Author: id23cat
  */
 
-#ifndef CUDEFINES_HPP_
-#define CUDEFINES_HPP_
+#ifndef CUDEFINES_H_
+#define CUDEFINES_H_
 
 #include <cutil_inline.h>
-#include <cuda_runtime.h>
 #include <cuda_runtime.h>
 #include <stdio.h>
 
@@ -64,4 +63,4 @@ int ColcMaxThreadsPerBLock(int shMemPerThread, int usedRegisters,
 // threadCount -- count of threads
 int CalcBlockCount(int shMemPerThread, int totalNeededSharedMem, int threadCount);
 
-#endif /* CUDEFINES_HPP_ */
+#endif /* CUDEFINES_H_ */
