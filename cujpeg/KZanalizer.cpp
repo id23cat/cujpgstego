@@ -14,8 +14,6 @@
 #include "cudefines.h"
 //#endif
 
-cudaEvent_t start, stop;
-float elapsedTime;
 
 KZanalizer::KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 comp) {
 	colorComponent = comp;
