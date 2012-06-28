@@ -91,13 +91,14 @@ class KZanalizerCUDA: public KZanalizer {
 //	HIST *gHist;
 public:
 	KZanalizerCUDA(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 component=_ALL):
-	KZanalizer(begin, end, component){}; // take iterators
+	KZanalizer(begin, end, component){}; // takes iterators
 //	KZanalizerCUDA(INT16 *data, size_t datalen); // take pointer to DCT sequence & count
 	virtual ~KZanalizerCUDA();
 	// Analize:
 	// true -- contain stego
 	// false -- clean image
 	bool Analize(int Pthreshold = 70);		// Pthreshold -- threshold for P-value
+	bool Analize2(int Pthreshold = 70);
 private:
 	int InitMem();
 

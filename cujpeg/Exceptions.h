@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #endif
 
+#define MEMORY_ALIGNMENT  4096
+#define ALIGN_UP(x,size) ( ((size_t)x+(size-1))&(~(size-1)) )
+
 //static char str_err[256];
 //std::string str_err;
 #define DEBUG_INFO(strout, file, line, str) sprintf(strout, "Error at %s:%d: %s" , file , line, str);
@@ -33,6 +36,12 @@
 			char str[256];\
 			sprintf(str, "malloc(%d) -- failed", count * sizeof(INT16));\
 			throw memory_fail(__FILE__, __LINE__, str);}
+
+#define SAFE_MALLOC_INT16_ALIGN4K(ptr, count) if(!(ptr = (INT16*) malloc(count * sizeof(INT16) + MEMORY_ALIGNMENT))){\
+			char str[256];\
+			sprintf(str, "malloc(%d) -- failed", count * sizeof(INT16));\
+			throw memory_fail(__FILE__, __LINE__, str);}\
+			ptr = (INT16*) ALIGN_UP(ptr, MEMORY_ALIGNMENT);
 
 #define SAFE_MALLOC_UINT16(ptr, count) if(!(ptr = (UINT16*) malloc(count * sizeof(UINT16)))){\
 			char str[256];\

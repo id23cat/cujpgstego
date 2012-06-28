@@ -12,11 +12,14 @@
 
 #include "cudefines.h"
 
-#if (__CUDA_ARCH__ < 200)
-#define THREADS 256
-#else
+//#if defined(__CUDA_ARCH__)&(__CUDA_ARCH__< 200)
+//#define THREADS 256
+//#warning using kernel for compute capability < 2.0
+//#else
+//#define THREADS 512
+//#warning using kernel for compute capability >= 2.0
+//#endif
 #define THREADS 512
-#endif
 #define SHMEM THREADS*8
 
 //__align__(128) INT16 *dDCTptr;			// pointer in device memory
@@ -332,8 +335,8 @@ typedef struct{
 	INT16 w1;
 } my_int4;
 
-#define ALIGN_UP(offset, alignment) \
-(offset) = ((offset) + (alignment) – 1) & ~((alignment) – 1)
+//#define ALIGN_UP(offset, alignment) \
+//(offset) = ((offset) + (alignment) – 1) & ~((alignment) – 1)
 
 __global__ void GStd3(INT16 *dct){
 	my_int4 *ptr = (my_int4*)dct;
@@ -419,7 +422,11 @@ __device__ inline void SumSum(INT16 val, INT16 &sum, INT32 &sumsq){
 
 __global__ void GStd5_2(INT16 *dct){
 
+//#if (__CUDA_ARCH__ >= 200)
+//
+//#else
 	__shared__ INT16 shmem[SHMEM];	//256*8 //4096// 8*512
+//#endif
 	int tidx = threadIdx.x + blockDim.x * blockIdx.x;
 	((uint4*)shmem)[threadIdx.x] = ((uint4*)dct)[tidx];
 
@@ -549,6 +556,11 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 	TIMER_START();
 	InitMem();
 
+	int dev;
+	cudaDeviceProp deviceProp;		// device properties
+	cutilSafeCall(cudaGetDevice(&dev));
+	cutilSafeCall(cudaGetDeviceProperties(&deviceProp, dev));
+
 //	int shMpT = 2*sizeof(INT16);	// shared memory per thread in bytes;
 //	int thcount = ColcMaxThreadsPerBLock(shMpT, 8, dctLen * sizeof(INT16), 4);
 //	int blkcount = CalcBlockCount(shMpT, dctLen * sizeof(INT16), thcount);
@@ -565,13 +577,15 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 
 //	GStd<<<gridSize, blockSize>>>( dDCTptr );
 
-	int threads = THREADS;
-	printf("Threads count = %d, blocks count = %d\n", threads, blockCount/threads+1);
+	int threads = THREADS;//deviceProp.maxThreadsPerBlock/2;
+	int blocks = (int)ceil((double)blockCount / threads);
+	printf("%d bytes: Threads count = %d, blocks count = %d (%d/%d)\n", dctLen * sizeof(INT16), threads, blocks,
+					blockCount, threads);
 //	GStd3<<<blockCount/threads+1, threads>>>( dDCTptr );
 //	GStd3<<<4, 4>>>( dDCTptr );
 //	GStd4<<<blockCount/threads+1, threads>>>( dDCTptr );
 //	GStd5<<<blockCount/threads+1, threads>>>( dDCTptr );
-	GStd5_2<<<blockCount/threads+1, threads>>>( dDCTptr );
+	GStd5_2<<<blocks, threads>>>( dDCTptr );
 //	GStd6<<<blockCount/threads+1, threads>>>( dDCTptr );
 
 	TIMER_STOP("GPU STD");
@@ -610,6 +624,84 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	printf("Bloks = %d", blockCount);
 //	free (hStd);
 //	free (hSum);
+	return false;
+}
+
+
+bool KZanalizerCUDA::Analize2(int Pthreshold ){
+	TIMER_START();
+	int dataSize = dctLen * sizeof(INT16);
+////	InitMem();
+	INT16* dPtr;
+	cutilSafeCall(		/* allocate memory on device */
+			cudaMalloc(&dPtr, dataSize));
+//	cutilSafeCall(
+//				cudaHostRegister(dctPtr, dataSize, cudaHostRegisterPortable));
+
+//	INT16 *hDCTptr;		/* page-locked memory pointer on host */
+//
+//	cutilSafeCall(		/* allocate page-locked memory on host */
+//			cudaHostAlloc(&hDCTptr, dataSize));
+//
+//	cutilSafeCall(		/* copy data to page-locked memory */
+//			cudaMemcpy(hDCTptr, dctPtr, dataSize, cudaMemcpyHostToHost));
+
+//	cutilSafeCall(
+//				cudaMemcpy(dDCTptr, dctPtr, dataSize, cudaMemcpyHostToDevice));
+
+	INT16 *hPtr, *hPtr_a;
+//	hPtr_a = (INT16*) malloc(dataSize + MEMORY_ALIGNMENT);
+	SAFE_HOST_MALLOC(hPtr_a, dctLen + MEMORY_ALIGNMENT, INT16);
+
+	hPtr = (INT16*) ALIGN_UP(hPtr_a, MEMORY_ALIGNMENT);
+
+
+	int dev;
+	cudaDeviceProp deviceProp;		// device properties
+	cutilSafeCall(cudaGetDevice(&dev));
+	cutilSafeCall(cudaGetDeviceProperties(&deviceProp, dev));
+
+	cudaStream_t stream[2];
+	for(int i=0; i<2; i++)
+		cudaStreamCreate(&stream[i]);
+
+	int threads = THREADS; //deviceProp.maxThreadsPerBlock/2;
+	int blocks = (int)ceil((double)blockCount / threads);
+
+	for(int i=0; i<2; i++){
+		cutilSafeCall(		/* copy data to device memory concurrently */
+				cudaMemcpyAsync(dPtr + i * dataSize/2, hPtr + i * dataSize/2,
+						dataSize/2, cudaMemcpyHostToDevice, stream[i]));
+
+		printf("%d bytes: Threads count = %d, blocks count = %d (%d/%d)\n", dataSize, threads, blocks,
+				blockCount, threads);
+
+		GStd5_2	<<<blocks/2, threads, 0, stream[i]>>>( dPtr + i * dataSize/2 );
+	}
+	TIMER_STOP("GPU2 STD");
+	cudaDeviceSynchronize();
+
+	INT16 *ppp;
+	SAFE_HOST_MALLOC(ppp, dctLen, INT16);
+	COPY_TO_HOST(ppp, dPtr, dctLen, INT16);
+
+//	for(int i=0,k=0,j=0; i<dctLen; i++){
+//		printf("DCT[%d]=%d DCT[%d]=%d\n", i, dctPtr[i], i, ppp[i]);
+//		k++;
+//		if( k== 8){
+////			printf("\t SUM[%d]=%d, SUMSQ[%d]=%d\n", j, hsum[j], j, hsumsq[j]);
+//			printf("\t[%d]=%d\n", j, ppp[i-7]);
+//			j++;
+//			k=0;
+//		}
+//	}
+
+//	cutilSafeCall(
+//			cudaHostUnregister(dctPtr));
+	cutilSafeCall(
+			cudaFree(dPtr));
+	SAFE_HOST_FREE(ppp);
+	SAFE_HOST_FREE(hPtr);
 	return false;
 }
 

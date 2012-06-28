@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>CUDAJpegStego</name>
+	<name>KZjpeg@cujpeg</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -107,106 +107,4 @@
 		<nature>org.eclipse.cdt.make.core.ScannerConfigNature</nature>
 		<nature>org.eclipse.cdt.core.cnature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>[Subprojects]</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>[Targets]</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/CMake Rules</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Header Files</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Object Files</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Resources</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Source Files</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Header Files/DCTdataIterator.h</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/DCTdataIterator.h</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Header Files/Exceptions.h</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/Exceptions.h</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Header Files/JPEGfile.h</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/JPEGfile.h</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Header Files/KZanalizer.h</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/KZanalizer.h</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Header Files/StreamReader.h</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/StreamReader.h</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Header Files/huftree.h</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/huftree.h</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Source Files/DCTdataIterator.cpp</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/DCTdataIterator.cpp</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Source Files/JPEGfile.cpp</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/JPEGfile.cpp</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Source Files/KZanalizer.cpp</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/KZanalizer.cpp</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Source Files/StreamReader.cpp</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/StreamReader.cpp</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Source Files/cujpeg.cpp</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/cujpeg.cpp</location>
-		</link>
-		<link>
-			<name>[Targets]/[exe] KZjpeg/Source Files/huftree.cpp</name>
-			<type>1</type>
-			<location>/home/cuda/workspace/cujpgstego/cujpeg/huftree.cpp</location>
-		</link>
-	</linkedResources>
 </projectDescription>

@@ -4,17 +4,21 @@ project ( ${PROJECT} )
 cmake_minimum_required(VERSION 2.8)
 
 
-set ( SOURCES cujpeg.cpp DCTdataIterator.cpp huftree.cpp JPEGfile.cpp KZanalizer.cpp StreamReader.cpp )
+set ( SOURCES cujpeg.cpp DCTdataIterator.cpp huftree.cpp JPEGfile.cpp KZanalizer.cpp StreamReader.cpp cudefines.cpp)
 set ( HEADERS cudefines.h Exceptions.h huftree.h DCTdataIterator.h JPEGfile.h KZanalizer.h StreamReader.h )
 set ( CUDA_SOURCES KZanalizerCUDA.cu )
 set ( CUDA_LIBRARIES cudart shrutil_x86_64 cutil_x86_64 )
+set (BOOST_COMPONENTS Exception)
 
+ 
+####  configure CUDA ####
 find_package ( CUDA REQUIRED )
 MESSAGE("CUDA")
 IF(NOT CUDA_FOUND)
 	MESSAGE("CUDA COULD NOT BE FOUND!")
 ENDIF(NOT CUDA_FOUND)
 
+message("CUDA_VERSION = ${CUDA_VERSION}")
 message("CUDA_SDK_ROOT_DIR = ${CUDA_SDK_ROOT_DIR}")
 message("CUDA_INCLUDE_DIRS = ${CUDA_INCLUDE_DIRS}")
 message("CUDA_LIBRARIES = ${CUDA_LIBRARIES}")
@@ -26,17 +30,33 @@ if(CUDA_SDK_ROOT_DIR MATCHES "CUDA_SDK_ROOT_DIR-NOTFOUND")
 	MESSAGE(FATAL_ERROR "Could not locate CUDA SDK. Try setting environment variable NVSDKCOMPUTE_ROOT or NVSDKCUDA_ROOT")
 endif(CUDA_SDK_ROOT_DIR MATCHES "CUDA_SDK_ROOT_DIR-NOTFOUND")
 
-
+set(CUDA_NVCC_FLAGS -g;-G;-Xcompiler;-extern-debug-info;--compiler-bindir /usr/bin/gcc-4.3;-gencode=arch=compute_20,code=\"sm_20,compute_20\")
 
 INCLUDE(FindCUDA)
 INCLUDE_DIRECTORIES ( ${CUDA_SDK_ROOT_DIR}/common/inc ${CUDA_SDK_ROOT_DIR}/../CUDALibraries/common/inc)
+
+
+#### configure Boost ####
+set (Boost_USE_STATIC_LIBS ON)
+set (Boost_USE_MULTITHREADED ON)
+
+#find_package (Exception)
+#find_package (Boost COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
+find_package (Boost REQUIRED)
+if(CBoost_INCLUDE_DIRS MATCHES "Boost_INCLUDE_DIRS-NOTFOUND")
+	MESSAGE(FATAL_ERROR "Could not locate Boost")
+endif(CBoost_INCLUDE_DIRS MATCHES "Boost_INCLUDE_DIRS-NOTFOUND")
+message("Boost_INCLUDE_DIRS = ${Boost_INCLUDE_DIRS}")
+include_directories(${Boost_INCLUDE_DIRS})
+
 
 #LINK_LIBRARIES("${CUDA_SDK_ROOT_DIR}/lib -lcutil")
 #set( CUDA_USE_LIBS cudart shrutil_x86_64 cutil_x86_64 )
 
 # Build script starts here
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
-set(CUDA_NVCC_FLAGS -g;-G;-Xcompiler;-fmessage-length=0;--compiler-bindir /usr/bin/gcc-4.3)
+#set(CUDA_NVCC_FLAGS -g;-G;-Xcompiler;-fmessage-length=0;--compiler-bindir /usr/bin/gcc-4.3)
+
 
 # CUDA settings
 #SET(CUDA_NVCC_FLAGS -DDEBUG -I/usr/local/cuda/include -I/home/id23cat/NVIDIA_GPU_Computing_SDK/C/common/inc/ -I/home/id23cat/NVIDIA_GPU_Computing_SDK/CUDALibraries/common/inc/ -O0 -g -G -c -Xcompiler -fmessage-length=0 --compiler-bindir /usr/bin/gcc-4.3 )

@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
 
 		KZanalizerCUDA kzcu(jpeg.begin(), jpeg.end(), _CB);	// create Analizer object
 		kzcu.Analize();
+		kzcu.Analize2();
 
 	} catch (my_exception exc) {
 		std::cerr << exc.what() << std::endl;

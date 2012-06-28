@@ -14,8 +14,6 @@
 #include "cudefines.h"
 //#endif
 
-cudaEvent_t start, stop;
-float elapsedTime;
 
 KZanalizer::KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 comp) {
 	colorComponent = comp;
@@ -32,7 +30,7 @@ KZanalizer::KZanalizer(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, U
 		dctLen = dctLen * decim[colorComponent]/ (decim[_Y] + decim[_CB] + decim[_CR]);
 	}
 	SAFE_MALLOC_INT16(dctPtr, dctLen);
-
+//	SAFE_MALLOC_INT16_ALIGN4K(dctPtr, dctLen);	// allocate data array aligned to 4096
 
 	KZdataIterator kzit(dctPtr, dctLen, begin.getDecimation());
 	JPEG::DCTdataIterator it = begin;
