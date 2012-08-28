@@ -4,7 +4,7 @@ project ( ${PROJECT} )
 cmake_minimum_required(VERSION 2.8)
 
 
-set ( SOURCES cujpeg.cpp DCTdataIterator.cpp huftree.cpp JPEGfile.cpp KZanalizer.cpp StreamReader.cpp )
+set ( SOURCES cujpeg.cpp DCTdataIterator.cpp huftree.cpp JPEGfile.cpp KZanalizer.cpp StreamReader.cpp cudefines.cpp )
 set ( HEADERS cudefines.h Exceptions.h huftree.h DCTdataIterator.h JPEGfile.h KZanalizer.h StreamReader.h )
 set ( CUDA_SOURCES KZanalizerCUDA.cu )
 set ( CUDA_LIBRARIES cudart shrutil_x86_64 cutil_x86_64 )
