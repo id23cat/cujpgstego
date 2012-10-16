@@ -44,16 +44,16 @@ size_t StreamReader::mvForward(size_t bytes) throw (io_fail){
 	return bytes;
 }
 
-size_t StreamReader::mvBackward(size_t bytes)throw (io_fail){
-	if (fseek(file, -bytes, SEEK_CUR)<0){
-		if (enable_exceptions)
-			throw io_fail(__FILE__, __LINE__, "StreamReader::mvBackward(): ")
-					<< str_info(strerror(errno)) << str_info(fileName);
-		else
-			return 0;
-	}
-	return bytes;
-}
+//size_t StreamReader::mvBackward(size_t bytes)throw (io_fail){
+//	if (fseek(file, -bytes, SEEK_CUR)<0){
+//		if (enable_exceptions)
+//			throw io_fail(__FILE__, __LINE__, "StreamReader::mvBackward(): ")
+//					<< str_info(strerror(errno)) << str_info(fileName);
+//		else
+//			return 0;
+//	}
+//	return bytes;
+//}
 
 int StreamReader::OpenFile(char *fname) throw (io_fail){
 	file = fopen(fname, "rb");

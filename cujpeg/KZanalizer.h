@@ -7,7 +7,7 @@
 
 #ifndef KZANALIZER_H_
 #define KZANALIZER_H_
-#include "datatypes.h"
+
 #include "JPEGfile.h"
 #include "Exceptions.h"
 

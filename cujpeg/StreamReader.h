@@ -9,6 +9,11 @@
 #define JPEGREADER_H_
 #include <stdio.h>
 #include "Exceptions.h"
+#include <pthread.h>
+
+#ifndef BYTE
+typedef unsigned char BYTE;
+#endif
 
 class StreamReader {
 	FILE *file;
@@ -44,7 +49,7 @@ public:
 
 	size_t Read(void *ptr, size_t bytes, size_t count) throw(io_fail);
 	size_t mvForward(size_t bytes)throw (io_fail);			// move file pointer on bytes forward
-	size_t mvBackward(size_t bytes)throw (io_fail);		// move file pointer on bytes backward
+	//size_t mvBackward(size_t bytes)throw (io_fail);		// move file pointer on bytes backward
 	long long FileLength() {
 		return filelength;
 	}
@@ -54,6 +59,14 @@ public:
 	int OpenFile(char *fname)throw (io_fail);
 	int CloseFile() throw (io_fail);
 	std::string FileName(){ return fileName;};
+
+	// Add POSIX threads
+private:
+	pthread_t *instream;
+	BYTE *buffer;
+
+
+
 };
 
 #endif /* JPEGREADER_H_ */

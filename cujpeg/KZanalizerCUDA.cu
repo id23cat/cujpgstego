@@ -9,7 +9,7 @@
 #include <cutil_inline.h>
 #include <cuda_runtime.h>
 #include "KZanalizer.h"
-
+#include "datatypes.h"
 #include "cudefines.h"
 
 #if (__CUDA_ARCH__ < 200)
