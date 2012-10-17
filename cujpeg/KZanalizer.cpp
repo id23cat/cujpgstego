@@ -12,6 +12,7 @@
 
 //#ifdef TIME_COMPARE
 #include "cudefines.h"
+#include "Timer.h"
 //#endif
 
 
@@ -89,7 +90,8 @@ bool KZanalizer::Analize(int Pthreshold){
 
 	// calculate STD for all blocks
 #ifdef TIME_COMPARE
-	TIMER_START();
+	Timer timer;
+	timer.Start();
 #endif
 	while(it < end){
 		stdArray[i++] = it.SqrDeviation();
@@ -97,7 +99,7 @@ bool KZanalizer::Analize(int Pthreshold){
 		it.mvToNextBlock();
 	}
 #ifdef TIME_COMPARE
-	TIMER_STOP("CPU STD");
+	timer.Stop("CPU STD");
 //	printf("%s time: %.5fms\n", str, elapsedTime);
 #endif
 	std::vector<HIST> hist;

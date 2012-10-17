@@ -11,6 +11,9 @@
 #include "KZanalizer.h"
 #include "datatypes.h"
 #include "cudefines.h"
+#ifdef TIME_COMPARE
+#include "Timer.h"
+#endif
 
 #if (__CUDA_ARCH__ < 200)
 #define THREADS 256
@@ -546,7 +549,10 @@ int KZanalizerCUDA::InitMem(){
 }
 
 bool KZanalizerCUDA::Analize(int Pthreshold ){
-	TIMER_START();
+#ifdef TIME_COMPARE
+	Timer timer;
+	timer.Start();
+#endif
 	InitMem();
 
 //	int shMpT = 2*sizeof(INT16);	// shared memory per thread in bytes;
@@ -573,8 +579,9 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	GStd5<<<blockCount/threads+1, threads>>>( dDCTptr );
 	GStd5_2<<<blockCount/threads+1, threads>>>( dDCTptr );
 //	GStd6<<<blockCount/threads+1, threads>>>( dDCTptr );
-
-	TIMER_STOP("GPU STD");
+#ifdef TIME_COMPARE
+	timer.Stop("GPU STD");
+#endif
 
 	INT16 *ppp;
 	SAFE_HOST_MALLOC(ppp, dctLen, INT16);

@@ -13,8 +13,8 @@
 //#define FNAME "106.jpg"
 //#define FNAME "11-out.jpg"
 //#define FNAME "106-100-2-A-0.jpg"
-//#define FNAME "106-100-1-A-0.jpg"
-#define FNAME "Big_image2.jpg"
+#define FNAME "106-100-1-A-0.jpg"
+//#define FNAME "Big_image2.jpg"
 
 #include <JpegStegoEncoder.h>
 #include <JpegStegoDecoder.h>

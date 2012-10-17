@@ -12,20 +12,20 @@
 #include <cuda_runtime.h>
 #include <stdio.h>
 
-extern cudaEvent_t start, stop;
-extern float elapsedTime;			// time counter
-
-#define TIMER_START()\
-	cudaEventCreate(&start);\
-	cudaEventCreate(&stop); \
-	cudaEventRecord(start, 0);
-
-#define TIMER_STOP( str )\
-		cudaEventRecord(stop, 0);\
-		cudaEventSynchronize(stop);\
-		cudaEventElapsedTime(&elapsedTime, start, stop);\
-		cudaEventDestroy(start); cudaEventDestroy(stop);\
-		if(str) printf("%s time: %.5fms\n", str, elapsedTime);
+//extern cudaEvent_t start, stop;
+//extern float elapsedTime;			// time counter
+//
+//#define TIMER_START()\
+//	cudaEventCreate(&start);\
+//	cudaEventCreate(&stop); \
+//	cudaEventRecord(start, 0);
+//
+//#define TIMER_STOP( str )\
+//		cudaEventRecord(stop, 0);\
+//		cudaEventSynchronize(stop);\
+//		cudaEventElapsedTime(&elapsedTime, start, stop);\
+//		cudaEventDestroy(start); cudaEventDestroy(stop);\
+//		if(str) printf("%s time: %.5fms\n", str, elapsedTime);
 
 
 #define SAFE_HOST_MALLOC( ptr, count, TYPE )\

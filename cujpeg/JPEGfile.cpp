@@ -10,7 +10,7 @@
 #include "JPEGfile.h"
 //#include "DCTdataIterator.h"
 
-#define PRINT_DATA
+//#define PRINT_DATA
 //#define PRINT_DCT_DECODE_PROCESS
 //#define PRINT_DCT_BLOCK
 //#define PRINT_TREE
