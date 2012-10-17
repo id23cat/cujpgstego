@@ -13,12 +13,12 @@
  */
 class Timer {
 	cudaEvent_t start, stop;
-	float elapsedTime;			// time counter
+	float time;			// time counter
 public:
 	Timer();
 	virtual ~Timer();
 	void Start();
-	void Stop();
+	float Stop();
 	float Stop(char *str);	// returns total time
 	float DevideBy(int value);	// devide result by value
 	void Print(char *str);

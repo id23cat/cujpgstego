@@ -23,18 +23,24 @@ void Timer::Start(){
 	cudaEventRecord(start, 0);
 }
 
-void Timer::Stop(char *str){
+float Timer::Stop(char *str){
 	Stop();
 	Print(str);
+	return time;
 }
 
-void Timer::Stop(){
+float Timer::Stop(){
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&elapsedTime, start, stop);
+	cudaEventElapsedTime(&time, start, stop);
+	return time;
+}
+
+float Timer::DevideBy(int value){
+	return time /= value;
 }
 
 void Timer::Print(char *str){
-	if(str) printf("%s time: %.5fms\n", str, elapsedTime);
-	else	printf("Elapsed time: %.5fms\n", elapsedTime);
+	if(str) printf("%s time: %.5fms\n", str, time);
+	else	printf("Elapsed time: %.5fms\n", time);
 }

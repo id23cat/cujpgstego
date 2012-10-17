@@ -549,10 +549,7 @@ int KZanalizerCUDA::InitMem(){
 }
 
 bool KZanalizerCUDA::Analize(int Pthreshold ){
-#ifdef TIME_COMPARE
-	Timer timer;
-	timer.Start();
-#endif
+
 	InitMem();
 
 //	int shMpT = 2*sizeof(INT16);	// shared memory per thread in bytes;
@@ -573,14 +570,89 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 
 	int threads = THREADS;
 	printf("Threads count = %d, blocks count = %d\n", threads, blockCount/threads+1);
+#ifdef TIME_COMPARE
+	Timer timer;
+	timer.Start();
+#endif
+	int iMAX=1000;
+	for(int i=0; i<iMAX; i++){
 //	GStd3<<<blockCount/threads+1, threads>>>( dDCTptr );
 //	GStd3<<<4, 4>>>( dDCTptr );
 //	GStd4<<<blockCount/threads+1, threads>>>( dDCTptr );
 //	GStd5<<<blockCount/threads+1, threads>>>( dDCTptr );
+
 	GStd5_2<<<blockCount/threads+1, threads>>>( dDCTptr );
 //	GStd6<<<blockCount/threads+1, threads>>>( dDCTptr );
+	}
 #ifdef TIME_COMPARE
-	timer.Stop("GPU STD");
+	float time1 = timer.Stop()/iMAX;
+	printf("GPU STD5_2: %.5fs\n", time1);
+#endif
+
+#ifdef TIME_COMPARE
+	timer.Start();
+#endif
+	for(int i=0; i<iMAX; i++){
+		GStd6<<<blockCount/threads+1, threads>>>( dDCTptr );
+	}
+#ifdef TIME_COMPARE
+	time1 = timer.Stop()/iMAX;
+	printf("GPU STD6: %.5fs\n", time1);
+#endif
+
+#ifdef TIME_COMPARE
+	timer.Start();
+#endif
+	for(int i=0; i<iMAX; i++){
+		GStd<<<blockCount/threads+1, threads>>>( dDCTptr );
+	}
+#ifdef TIME_COMPARE
+	time1 = timer.Stop()/iMAX;
+	printf("GPU STD: %.5fs\n", time1);
+#endif
+
+#ifdef TIME_COMPARE
+	timer.Start();
+#endif
+	for(int i=0; i<iMAX; i++){
+		GStd2<<<blockCount/threads+1, threads>>>( dDCTptr );
+	}
+#ifdef TIME_COMPARE
+	time1 = timer.Stop()/iMAX;
+	printf("GPU STD2: %.5fs\n", time1);
+#endif
+
+#ifdef TIME_COMPARE
+	timer.Start();
+#endif
+	for(int i=0; i<iMAX; i++){
+		GStd3<<<blockCount/threads+1, threads>>>( dDCTptr );
+	}
+#ifdef TIME_COMPARE
+	time1 = timer.Stop()/iMAX;
+	printf("GPU STD3: %.5fs\n", time1);
+#endif
+
+#ifdef TIME_COMPARE
+	timer.Start();
+#endif
+	for(int i=0; i<iMAX; i++){
+		GStd4<<<blockCount/threads+1, threads>>>( dDCTptr );
+	}
+#ifdef TIME_COMPARE
+	time1 = timer.Stop()/iMAX;
+	printf("GPU STD4: %.5fs\n", time1);
+#endif
+
+#ifdef TIME_COMPARE
+	timer.Start();
+#endif
+	for(int i=0; i<iMAX; i++){
+		GStd5<<<blockCount/threads+1, threads>>>( dDCTptr );
+	}
+#ifdef TIME_COMPARE
+	time1 = timer.Stop()/iMAX;
+	printf("GPU STD5: %.5fs\n", time1);
 #endif
 
 	INT16 *ppp;
@@ -619,6 +691,11 @@ bool KZanalizerCUDA::Analize(int Pthreshold ){
 //	free (hSum);
 	return false;
 }
+
+KZanalizerCUDA::KZanalizerCUDA(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 component):
+KZanalizer(begin, end, component){
+	cudaDeviceReset();
+};
 
 KZanalizerCUDA::~KZanalizerCUDA(){
 	SAFE_DEVICE_FREE(dDCTptr);

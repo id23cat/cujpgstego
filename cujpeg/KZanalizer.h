@@ -90,8 +90,7 @@ class KZanalizerCUDA: public KZanalizer {
 	VALUETYPE *dSum;
 //	HIST *gHist;
 public:
-	KZanalizerCUDA(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 component=_ALL):
-	KZanalizer(begin, end, component){}; // take iterators
+	KZanalizerCUDA(JPEG::DCTdataIterator begin, JPEG::DCTdataIterator end, UINT8 component=_ALL); // take iterators
 //	KZanalizerCUDA(INT16 *data, size_t datalen); // take pointer to DCT sequence & count
 	virtual ~KZanalizerCUDA();
 	// Analize:
