@@ -33,6 +33,61 @@
 #define PLUS(a, b) a += b
 #define PLUS_SQ(a, b) a += b*b
 
+#define HISTSIZE 1024
+__shared__ float shvalue[HISTSIZE];
+__shared__ int shcount[HISTSIZE];
+__shared__ int shactual_sz;
+
+class GPUhist{
+	float *value;
+	int *count;
+	int *actual_size;
+public:
+	__device__ GPUhist();
+	__device__ void AddValue(float val);
+private:
+	__device__ void Exchange(int i1, int i2);
+
+};
+
+__device__ GPUhist::GPUhist():
+				value(shvalue),
+				count(shcount),
+				actual_size(&shactual_sz){
+
+	int dim = blockDim.x;
+	int idx = threadIdx.x;
+
+	int elems_per_thread = HISTSIZE/dim;
+
+	for(int i=0, j=0; j<elems_per_thread; j++, i += dim){
+		value[idx + i] = 0;
+		count[idx + i] = 0;
+	}
+
+	if(idx==0) actual_size = 0;
+};
+
+__device__ void GPUhist::AddValue(float v){
+	int i=0;
+	for(; i<*actual_size; i++){
+		if (value[i] == v) {
+			atomicAdd(&(count[i]), 1);
+			if (i > 0 && count[i - 1] < count[i])
+				Exchange(i - 1, i);
+			return;
+		}
+	}
+	if(i < HISTSIZE){
+		atomicAdd(&(value[i]), v);
+		atomicAdd(&(count[i]), 1);
+	}
+}
+
+__device__ void GPUhist::Exchange(int i1, int i2){
+	count[i1] = atomicExch(&(count[i2]), count[i1]);
+	value[i1] = atomicExch(&(value[i2]), value[i1]);
+}
 
 
 __global__ void GStd(INT16 *dct){
