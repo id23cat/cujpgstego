@@ -6,7 +6,8 @@
  */
 
 //#include "KZanalizerCUDA.cuh"
-#include <cutil_inline.h>
+//#include <cutil_inline.h>
+#include <cuda.h>
 #include <cuda_runtime.h>
 #include "KZanalizer.h"
 #include "datatypes.h"
@@ -127,10 +128,10 @@ __device__ inline void SumSum(INT16 val, INT16 &sum, INT32 &sumsq){
 
 
 int KZanalizerCUDA::InitMem(){
-	cutilSafeCall(
-			cudaMalloc(&dDCTptr, dctLen * sizeof(INT16)));
-	cutilSafeCall(
-			cudaMemcpy(dDCTptr, dctPtr, dctLen * sizeof(INT16), cudaMemcpyHostToDevice));
+	//cutilSafeCall(
+			cudaMalloc(&dDCTptr, dctLen * sizeof(INT16));
+	//cutilSafeCall(
+			cudaMemcpy(dDCTptr, dctPtr, dctLen * sizeof(INT16), cudaMemcpyHostToDevice);
 
 	return dctLen;
 }
